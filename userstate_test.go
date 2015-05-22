@@ -3,17 +3,11 @@ package permissions
 import (
 	"testing"
 
-	"github.com/xyproto/db"
-)
-
-const (
-	// "username:password@host:port/database"
-	connectionString = "travis:@127.0.0.1/" // for Travis-CI
+	"github.com/xyproto/pinterface"
 )
 
 func TestPerm(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test1.db", true)
 
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
 
@@ -49,8 +43,7 @@ func TestPerm(t *testing.T) {
 }
 
 func TestPasswordBasic(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test2.db", true)
 
 	// Assert that the default password algorithm is "bcrypt+"
 	if userstate.PasswordAlgo() != "bcrypt+" {
@@ -68,8 +61,7 @@ func TestPasswordBasic(t *testing.T) {
 
 // Check if the functionality for backwards compatible hashing works
 func TestPasswordBackward(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test3.db", true)
 
 	userstate.SetPasswordAlgo("sha256")
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
@@ -96,8 +88,7 @@ func TestPasswordBackward(t *testing.T) {
 
 // Check if the functionality for backwards compatible hashing works
 func TestPasswordNotBackward(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test4.db", true)
 
 	userstate.SetPasswordAlgo("bcrypt")
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
@@ -118,8 +109,7 @@ func TestPasswordNotBackward(t *testing.T) {
 }
 
 func TestPasswordAlgoMatching(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test5.db", true)
 
 	// generate two different password using the same credentials but different algos
 	userstate.SetPasswordAlgo("sha256")
@@ -134,16 +124,14 @@ func TestPasswordAlgoMatching(t *testing.T) {
 }
 
 func TestIUserState(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test6.db", true)
 
 	// Check that the userstate qualifies for the IUserState interface
-	var _ db.IUserState = userstate
+	var _ pinterface.IUserState = userstate
 }
 
 func TestHostPassword(t *testing.T) {
-	//userstate := NewUserStateSimple() // for localhost
-	userstate := NewUserState(connectionString, true)
+	userstate := NewUserState("/tmp/__bolt_test7.db", true)
 
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
 	if !userstate.HasUser("bob") {
