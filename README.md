@@ -1,5 +1,7 @@
 #Permissionbolt [![Build Status](https://travis-ci.org/xyproto/permissionbolt.svg?branch=master)](https://travis-ci.org/xyproto/permissionbolt) [![GoDoc](https://godoc.org/github.com/xyproto/permissionbolt?status.svg)](http://godoc.org/github.com/xyproto/permissionbolt)
 
+WORK IN PROGRESS!
+
 Middleware for keeping track of users, login states and permissions.
 
 Uses Bolt for the database. For using [Redis](http://redis.io) as a backend instead, look into [permissions2](https://github.com/xyproto/permissions2).
