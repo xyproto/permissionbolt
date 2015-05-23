@@ -28,9 +28,9 @@ func New() *Permissions {
 	return NewPermissions(NewUserStateSimple())
 }
 
-// Initialize a Permissions struct with a database connection string
-func NewWithConf(connectionString string) *Permissions {
-	return NewPermissions(NewUserState(connectionString, true))
+// Initialize a Permissions struct with a database filename
+func NewWithConf(filename string) *Permissions {
+	return NewPermissions(NewUserState(filename, true))
 }
 
 // Initialize a Permissions struct with the given UserState and
