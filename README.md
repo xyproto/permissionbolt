@@ -1,7 +1,5 @@
 #Permissionbolt [![Build Status](https://travis-ci.org/xyproto/permissionbolt.svg?branch=master)](https://travis-ci.org/xyproto/permissionbolt) [![GoDoc](https://godoc.org/github.com/xyproto/permissionbolt?status.svg)](http://godoc.org/github.com/xyproto/permissionbolt)
 
-WORK IN PROGRESS!
-
 Middleware for keeping track of users, login states and permissions.
 
 Uses Bolt for the database. For using [Redis](http://redis.io) as a backend instead, look into [permissions2](https://github.com/xyproto/permissions2).
@@ -11,7 +9,7 @@ Features and limitations
 ------------------------
 
 * Uses secure cookies and stores user information in a Bolt database. 
-* Suitable for running a local Bolt server, registering/confirming users and managing public/user/admin pages.
+* Suitable for running a local Bolt database, registering/confirming users and managing public/user/admin pages.
 * Supports registration and confirmation via generated confirmation codes.
 * Tries to keep things simple.
 * Only supports "public", "user" and "admin" permissions out of the box, but offers functionality for implementing more fine grained permissions, if so desired.

@@ -516,7 +516,7 @@ func (state *UserState) Users() pinterface.IHashMap {
 	return state.users
 }
 
-// Return a struct for creating datastructures with
+// Return a struct for creating datastructures
 func (state *UserState) Creator() pinterface.ICreator {
 	return simplebolt.NewCreator(state.db)
 }
