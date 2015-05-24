@@ -1,4 +1,4 @@
-package permissions
+package permissionbolt
 
 import (
 	"errors"
@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xyproto/permissions2" // For cookies
-	"github.com/xyproto/pinterface"   // Database interfaces
-	"github.com/xyproto/simplebolt"   // Bolt database wrapper
+	"github.com/xyproto/cookie"     // Functions related to cookies
+	"github.com/xyproto/pinterface" // Database interfaces
+	"github.com/xyproto/simplebolt" // Bolt database wrapper
 )
 
 const (
@@ -53,7 +53,7 @@ func NewUserState(filename string, randomseed bool) *UserState {
 	// For the secure cookies
 	// This must happen before the random seeding, or
 	// else people will have to log in again after every server restart
-	state.cookieSecret = permissions.RandomCookieFriendlyString(30)
+	state.cookieSecret = cookie.RandomCookieFriendlyString(30)
 
 	// Seed the random number generator
 	if randomseed {
@@ -170,7 +170,7 @@ func (state *UserState) IsAdmin(username string) bool {
 
 // Retrieve the username that is stored in a cookie in the browser, if available.
 func (state *UserState) UsernameCookie(req *http.Request) (string, error) {
-	username, ok := permissions.SecureCookie(req, "user", state.cookieSecret)
+	username, ok := cookie.SecureCookie(req, "user", state.cookieSecret)
 	if ok && (username != "") {
 		return username, nil
 	}
@@ -188,7 +188,7 @@ func (state *UserState) SetUsernameCookie(w http.ResponseWriter, username string
 	}
 	// Create a cookie that lasts for a while ("timeout" seconds),
 	// this is the equivivalent of a session for a given username.
-	permissions.SetSecureCookiePath(w, "user", username, state.cookieTime, "/", state.cookieSecret)
+	cookie.SetSecureCookiePath(w, "user", username, state.cookieTime, "/", state.cookieSecret)
 	return nil
 }
 
@@ -295,7 +295,7 @@ func (state *UserState) Login(w http.ResponseWriter, username string) error {
 // Try to clear the user cookie by setting it to expired.
 // Some browsers *may* be configured to keep cookies even after this.
 func (state *UserState) ClearCookie(w http.ResponseWriter) {
-	permissions.ClearCookie(w, "user", "/")
+	cookie.ClearCookie(w, "user", "/")
 }
 
 // Convenience function for logging a user out.
@@ -478,11 +478,11 @@ func (state *UserState) SetMinimumConfirmationCodeLength(length int) {
 func (state *UserState) GenerateUniqueConfirmationCode() (string, error) {
 	const maxConfirmationCodeLength = 100 // when are the generated confirmation codes unreasonably long
 	length := minConfirmationCodeLength
-	confirmationCode := permissions.RandomHumanFriendlyString(length)
+	confirmationCode := cookie.RandomHumanFriendlyString(length)
 	for state.AlreadyHasConfirmationCode(confirmationCode) {
 		// Increase the length of the confirmationCode random string every time there is a collision
 		length++
-		confirmationCode = permissions.RandomHumanFriendlyString(length)
+		confirmationCode = cookie.RandomHumanFriendlyString(length)
 		if length > maxConfirmationCodeLength {
 			// This should never happen
 			return confirmationCode, errors.New("Too many generated confirmation codes are not unique!")

@@ -1,4 +1,4 @@
-package permissions
+package permissionbolt
 
 import (
 	"crypto/sha256"

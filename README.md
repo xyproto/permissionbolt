@@ -36,8 +36,8 @@ func main() {
 	n := negroni.Classic()
 	mux := http.NewServeMux()
 
-	// New permissions middleware
-	perm := permissions.New()
+	// New permissionbolt middleware
+	perm := permissionbolt.New()
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -101,7 +101,7 @@ func main() {
 		http.Error(w, "Permission denied!", http.StatusForbidden)
 	})
 
-	// Enable the permissions middleware
+	// Enable the permissionbolt middleware
 	n.Use(perm)
 
 	// Use mux for routing, this goes last
@@ -129,8 +129,8 @@ import (
 func main() {
 	m := martini.Classic()
 
-	// New permissions middleware
-	perm := permissions.New()
+	// New permissionbolt middleware
+	perm := permissionbolt.New()
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -202,7 +202,7 @@ func main() {
 		c.Next()
 	}
 
-	// Enable the permissions middleware
+	// Enable the permissionbolt middleware
 	m.Use(permissionHandler)
 
 	// Serve
@@ -227,8 +227,8 @@ import (
 func main() {
 	g := gin.New()
 
-	// New permissions middleware
-	perm := permissions.New()
+	// New permissionbolt middleware
+	perm := permissionbolt.New()
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -249,7 +249,7 @@ func main() {
 	// Logging middleware
 	g.Use(gin.Logger())
 
-	// Enable the permissions middleware, must come before recovery
+	// Enable the permissionbolt middleware, must come before recovery
 	g.Use(permissionHandler)
 
 	// Recovery middleware
@@ -334,8 +334,8 @@ import (
 func main() {
 	m := macaron.Classic()
 
-	// New permissions middleware
-	perm := permissions.New()
+	// New permissionbolt middleware
+	perm := permissionbolt.New()
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -360,7 +360,7 @@ func main() {
 		ctx.Next()
 	}
 
-	// Enable the permissions middleware, must come before recovery
+	// Enable the permissionbolt middleware, must come before recovery
 	m.Use(permissionHandler)
 
 	// Recovery middleware

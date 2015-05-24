@@ -1,5 +1,5 @@
 // Middleware for keeping track of users, login states and permissions.
-package permissions
+package permissionbolt
 
 import (
 	"github.com/xyproto/pinterface"

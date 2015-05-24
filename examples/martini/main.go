@@ -13,7 +13,7 @@ func main() {
 	m := martini.Classic()
 
 	// New permissions middleware
-	perm := permissions.New()
+	perm := permissionbolt.New()
 
 	// Blank slate, no default permissions
 	//perm.Clear()
