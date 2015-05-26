@@ -31,7 +31,7 @@ type UserState struct {
 
 // Create a new *UserState that can be used for managing users.
 // The random number generator will be seeded after generating the cookie secret.
-func NewUserStateSimple() *UserState {
+func NewUserStateSimple() (*UserState, error) {
 	// connection string | initialize random generator after generating the cookie secret
 	return NewUserState(defaultFilename, true)
 }
@@ -39,14 +39,24 @@ func NewUserStateSimple() *UserState {
 // Create a new *UserState that can be used for managing users.
 // connectionString may be on the form "username:password@host:port/database".
 // If randomseed is true, the random number generator will be seeded after generating the cookie secret (true is a good default value).
-func NewUserState(filename string, randomseed bool) *UserState {
+func NewUserState(filename string, randomseed bool) (*UserState, error) {
 	db := simplebolt.New(filename)
 
 	state := new(UserState)
 
-	state.users = simplebolt.NewHashMap(db, "users")
-	state.usernames = simplebolt.NewSet(db, "usernames")
-	state.unconfirmed = simplebolt.NewSet(db, "unconfirmed")
+	var err error
+	state.users, err = simplebolt.NewHashMap(db, "users")
+	if err != nil {
+		return nil, err
+	}
+	state.usernames, err = simplebolt.NewSet(db, "usernames")
+	if err != nil {
+		return nil, err
+	}
+	state.unconfirmed, err = simplebolt.NewSet(db, "unconfirmed")
+	if err != nil {
+		return nil, err
+	}
 
 	state.db = db
 
@@ -67,7 +77,7 @@ func NewUserState(filename string, randomseed bool) *UserState {
 	// "bcrypt", but with backwards compatibility for checking sha256 hashes.
 	state.passwordAlgorithm = "bcrypt+" // "bcrypt+", "bcrypt" or "sha256"
 
-	return state
+	return state, nil
 }
 
 // Get the database

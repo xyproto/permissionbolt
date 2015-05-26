@@ -19,18 +19,27 @@ type Permissions struct {
 
 const (
 	// Version number. Stable API within major version numbers.
-	Version = 1.0
+	Version = 2.0
 )
 
 // Initialize a Permissions struct with all the default settings.
 // This will also connect to the database host at port 3306.
-func New() *Permissions {
-	return NewPermissions(NewUserStateSimple())
+func New() (*Permissions, error) {
+	state, err := NewUserStateSimple()
+	if err != nil {
+		return nil, err
+	}
+	return NewPermissions(state), nil
 }
 
 // Initialize a Permissions struct with a database filename
-func NewWithConf(filename string) *Permissions {
-	return NewPermissions(NewUserState(filename, true))
+func NewWithConf(filename string) (*Permissions, error) {
+	state, err := NewUserState(filename, true)
+	if err != nil {
+		return nil, err
+	}
+	return NewPermissions(state), nil
+
 }
 
 // Initialize a Permissions struct with the given UserState and
