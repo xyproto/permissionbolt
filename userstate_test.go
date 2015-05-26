@@ -1,13 +1,18 @@
 package permissionbolt
 
 import (
+	"os"
+	"path"
 	"testing"
 
 	"github.com/xyproto/pinterface"
 )
 
 func TestPerm(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test1.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt1.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
 
@@ -43,7 +48,10 @@ func TestPerm(t *testing.T) {
 }
 
 func TestPasswordBasic(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test2.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt2.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Assert that the default password algorithm is "bcrypt+"
 	if userstate.PasswordAlgo() != "bcrypt+" {
@@ -61,7 +69,10 @@ func TestPasswordBasic(t *testing.T) {
 
 // Check if the functionality for backwards compatible hashing works
 func TestPasswordBackward(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test3.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt3.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	userstate.SetPasswordAlgo("sha256")
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
@@ -88,7 +99,10 @@ func TestPasswordBackward(t *testing.T) {
 
 // Check if the functionality for backwards compatible hashing works
 func TestPasswordNotBackward(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test4.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt4.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	userstate.SetPasswordAlgo("bcrypt")
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
@@ -109,7 +123,10 @@ func TestPasswordNotBackward(t *testing.T) {
 }
 
 func TestPasswordAlgoMatching(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test5.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt5.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// generate two different password using the same credentials but different algos
 	userstate.SetPasswordAlgo("sha256")
@@ -124,14 +141,20 @@ func TestPasswordAlgoMatching(t *testing.T) {
 }
 
 func TestIUserState(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test6.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt6.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Check that the userstate qualifies for the IUserState interface
 	var _ pinterface.IUserState = userstate
 }
 
 func TestHostPassword(t *testing.T) {
-	userstate := NewUserState("/tmp/__bolt_test7.db", true)
+	userstate, err := NewUserState(path.Join(os.TempDir(), "bolt7.db"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	userstate.AddUser("bob", "hunter1", "bob@zombo.com")
 	if !userstate.HasUser("bob") {
