@@ -25,6 +25,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -37,7 +38,10 @@ func main() {
 	mux := http.NewServeMux()
 
 	// New permissionbolt middleware
-	perm := permissionbolt.New()
+	perm, err := permissionbolt.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -124,6 +128,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -135,7 +140,10 @@ func main() {
 	m := martini.Classic()
 
 	// New permissionbolt middleware
-	perm := permissionbolt.New()
+	perm, err := permissionbolt.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -227,6 +235,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -238,7 +247,10 @@ func main() {
 	g := gin.New()
 
 	// New permissionbolt middleware
-	perm := permissionbolt.New()
+	perm, err := permissionbolt.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Blank slate, no default permissions
 	//perm.Clear()
@@ -339,6 +351,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
@@ -350,7 +363,10 @@ func main() {
 	m := macaron.Classic()
 
 	// New permissionbolt middleware
-	perm := permissionbolt.New()
+	perm, perm := permissionbolt.New()
+	if err != nil {
+		log.Fatalln(err)
+	}
 
 	// Blank slate, no default permissions
 	//perm.Clear()
