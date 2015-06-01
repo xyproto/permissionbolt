@@ -40,11 +40,15 @@ func NewUserStateSimple() (*UserState, error) {
 // connectionString may be on the form "username:password@host:port/database".
 // If randomseed is true, the random number generator will be seeded after generating the cookie secret (true is a good default value).
 func NewUserState(filename string, randomseed bool) (*UserState, error) {
-	db := simplebolt.New(filename)
+	var err error
+
+	db, err := simplebolt.New(filename)
+	if err != nil {
+		return nil, err
+	}
 
 	state := new(UserState)
 
-	var err error
 	state.users, err = simplebolt.NewHashMap(db, "users")
 	if err != nil {
 		return nil, err
