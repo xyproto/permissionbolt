@@ -23,7 +23,6 @@ const (
 )
 
 // Initialize a Permissions struct with all the default settings.
-// This will also connect to the database host at port 3306.
 func New() (*Permissions, error) {
 	state, err := NewUserStateSimple()
 	if err != nil {
