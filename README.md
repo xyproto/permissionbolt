@@ -2,7 +2,7 @@
 
 Middleware for keeping track of users, login states and permissions.
 
-Uses Bolt for the database. For using [Redis](http://redis.io) as a backend instead, look into [permissions2](https://github.com/xyproto/permissions2).
+Uses [Bolt](github.com/boltdb/bolt) for the database. For using [Redis](http://redis.io) as a backend instead, look into [permissions2](https://github.com/xyproto/permissions2).
 
 
 Features and limitations
