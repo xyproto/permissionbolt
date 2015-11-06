@@ -737,6 +737,12 @@ Password hashing
 * For backwards compatibility, old password hashes with the length of a sha256 hash will be checked with sha256. To disable this behavior, and only ever use bcrypt, add this line: `userstate.SetPasswordAlgo("bcrypt")`
 
 
+Additional resources
+--------------------
+
+* Here is a short code snippet for retriving the underlying Bolt database: https://gist.github.com/xyproto/87d95ea79ad1019d3599
+
+
 Coding style
 ------------
 
