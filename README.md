@@ -8,7 +8,7 @@ Uses [Bolt](github.com/boltdb/bolt) for the database. For using [Redis](http://r
 Features and limitations
 ------------------------
 
-* Uses secure cookies and stores user information in a Bolt database. 
+* Uses secure cookies and stores user information in a Bolt database.
 * Suitable for using Bolt database file (in a similar fashion to SQLite), registering/confirming users and managing public/user/admin pages.
 * Supports registration and confirmation via generated confirmation codes.
 * Tries to keep things simple.
@@ -716,7 +716,7 @@ import (
 type permissionHandler struct {
 	// perm is a Permissions structure that can be used to deny requests
 	// and aquire the UserState. By using `pinterface.IPermissions` instead
-	// of `permissions.Permissions`, the code is compatible with not only
+	// of `*permissionbolt.Permissions`, the code is compatible with not only
 	// `permissionbolt`, but also other modules that uses other database
 	// backends, like `permissions2` which uses Redis.
 	perm pinterface.IPermissions
