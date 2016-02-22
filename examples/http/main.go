@@ -13,7 +13,7 @@ import (
 
 type permissionHandler struct {
 	// perm is a Permissions structure that can be used to deny requests
-	// and aquire the UserState. By using `pinterface.IPermissions` instead
+	// and acquire the UserState. By using `pinterface.IPermissions` instead
 	// of `*permissionbolt.Permissions`, the code is compatible with not only
 	// `permissionbolt`, but also other modules that uses other database
 	// backends, like `permissions2` which uses Redis.
