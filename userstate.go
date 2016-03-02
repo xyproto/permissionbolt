@@ -19,6 +19,7 @@ var (
 	minConfirmationCodeLength = 20 // minimum length of the confirmation code
 )
 
+// The UserState struct holds the pointer to the underlying database and a few other settings
 type UserState struct {
 	users             *simplebolt.HashMap  // Hash map of users, with several different fields per user ("loggedin", "confirmed", "email" etc)
 	usernames         *simplebolt.Set      // A list of all usernames, for easy enumeration
@@ -29,16 +30,17 @@ type UserState struct {
 	passwordAlgorithm string               // The hashing algorithm to utilize default: "bcrypt+" allowed: ("sha256", "bcrypt", "bcrypt+")
 }
 
-// Create a new *UserState that can be used for managing users.
+// NewUserStateSimple creates a new UserState struct that can be used for managing users.
 // The random number generator will be seeded after generating the cookie secret.
 func NewUserStateSimple() (*UserState, error) {
 	// connection string | initialize random generator after generating the cookie secret
 	return NewUserState(defaultFilename, true)
 }
 
-// Create a new *UserState that can be used for managing users.
+// NewUserState creates a new UserState struct that can be used for managing users.
 // connectionString may be on the form "username:password@host:port/database".
-// If randomseed is true, the random number generator will be seeded after generating the cookie secret (true is a good default value).
+// If randomseed is true, the random number generator will be seeded after generating the cookie secret
+// (true is a good default value).
 func NewUserState(filename string, randomseed bool) (*UserState, error) {
 	var err error
 
@@ -84,12 +86,12 @@ func NewUserState(filename string, randomseed bool) (*UserState, error) {
 	return state, nil
 }
 
-// Get the database
+// Database retrieves the underlying database
 func (state *UserState) Database() *simplebolt.Database {
 	return state.db
 }
 
-// For fulfilling the IHost interface
+// Host retrieves the underlying database. It helps fulfill the IHost interface.
 func (state *UserState) Host() pinterface.IHost {
 	return state.db
 }
@@ -99,7 +101,7 @@ func (state *UserState) Close() {
 	state.db.Close()
 }
 
-// Check if the current user is logged in and has user rights.
+// UserRights checks if the current user is logged in and has user rights.
 func (state *UserState) UserRights(req *http.Request) bool {
 	username, err := state.UsernameCookie(req)
 	if err != nil {
@@ -108,7 +110,7 @@ func (state *UserState) UserRights(req *http.Request) bool {
 	return state.IsLoggedIn(username)
 }
 
-// Check if the given username exists.
+// HasUser checks if the given username exists.
 func (state *UserState) HasUser(username string) bool {
 	val, err := state.usernames.Has(username)
 	if err != nil {
@@ -118,7 +120,7 @@ func (state *UserState) HasUser(username string) bool {
 	return val
 }
 
-// Return the boolean value for a given username and fieldname.
+// BooleanField returns a boolean value for the given username and fieldname.
 // If the user or field is missing, false will be returned.
 // Useful for states where it makes sense that the returned value is not true
 // unless everything is in order.
@@ -134,7 +136,7 @@ func (state *UserState) BooleanField(username, fieldname string) bool {
 	return value == "true"
 }
 
-// Store a boolean value for the given username and custom fieldname.
+// SetBooleanField stores a boolean value given a username and a custom fieldname.
 func (state *UserState) SetBooleanField(username, fieldname string, val bool) {
 	strval := "false"
 	if val {
@@ -143,12 +145,12 @@ func (state *UserState) SetBooleanField(username, fieldname string, val bool) {
 	state.users.Set(username, fieldname, strval)
 }
 
-// Check if the given username is confirmed.
+// IsConfirmed checks if a user is confirmed (can be used for "e-mail confirmation").
 func (state *UserState) IsConfirmed(username string) bool {
 	return state.BooleanField(username, "confirmed")
 }
 
-// Checks if the given username is logged in.
+// IsLoggedIn checks if a user is logged in.
 func (state *UserState) IsLoggedIn(username string) bool {
 	if !state.HasUser(username) {
 		return false
@@ -161,7 +163,7 @@ func (state *UserState) IsLoggedIn(username string) bool {
 	return status == "true"
 }
 
-// Check if the current user is logged in and has administrator rights.
+// AdminRights checks if the current user is logged in and has administrator rights.
 func (state *UserState) AdminRights(req *http.Request) bool {
 	username, err := state.UsernameCookie(req)
 	if err != nil {
@@ -170,7 +172,7 @@ func (state *UserState) AdminRights(req *http.Request) bool {
 	return state.IsLoggedIn(username) && state.IsAdmin(username)
 }
 
-// Check if the given username is an administrator.
+// IsAdmin checks if a user is an administrator.
 func (state *UserState) IsAdmin(username string) bool {
 	if !state.HasUser(username) {
 		return false
@@ -182,7 +184,7 @@ func (state *UserState) IsAdmin(username string) bool {
 	return status == "true"
 }
 
-// Retrieve the username that is stored in a cookie in the browser, if available.
+// UsernameCookie retrieves the username that is stored in a cookie in the browser, if available.
 func (state *UserState) UsernameCookie(req *http.Request) (string, error) {
 	username, ok := cookie.SecureCookie(req, "user", state.cookieSecret)
 	if ok && (username != "") {
@@ -191,8 +193,8 @@ func (state *UserState) UsernameCookie(req *http.Request) (string, error) {
 	return "", errors.New("Could not retrieve the username from browser cookie")
 }
 
-// Store the given username in a cookie in the browser, if possible.
-// The user must exist.
+// SetUsernameCookie stores the given username in a cookie in the browser, if possible.
+// Will return an error if the username is empty or the user does not exist.
 func (state *UserState) SetUsernameCookie(w http.ResponseWriter, username string) error {
 	if username == "" {
 		return errors.New("Can't set cookie for empty username")
@@ -206,49 +208,49 @@ func (state *UserState) SetUsernameCookie(w http.ResponseWriter, username string
 	return nil
 }
 
-// Get a list of all usernames.
+// AllUsernames returns a list of all usernames.
 func (state *UserState) AllUsernames() ([]string, error) {
 	return state.usernames.GetAll()
 }
 
-// Get the email for the given username.
+// Email returns the email address for the given username.
 func (state *UserState) Email(username string) (string, error) {
 	return state.users.Get(username, "email")
 }
 
-// Get the password hash for the given username.
+// PasswordHash returns the password hash for the given username.
 func (state *UserState) PasswordHash(username string) (string, error) {
 	return state.users.Get(username, "password")
 }
 
-// Get all registered users that are not yet confirmed.
+// AllUnconfirmedUsernames returns a list of all registered users that are not yet confirmed.
 func (state *UserState) AllUnconfirmedUsernames() ([]string, error) {
 	return state.unconfirmed.GetAll()
 }
 
-// Get the confirmation code for a specific user.
+// ConfirmationCode returns the stored confirmation code for a specific user.
 func (state *UserState) ConfirmationCode(username string) (string, error) {
 	return state.users.Get(username, "confirmationCode")
 }
 
-// Add a user that is registered but not confirmed.
+// AddUnconfirmed adds a user to a list of users that are registered, but not confirmed.
 func (state *UserState) AddUnconfirmed(username, confirmationCode string) {
 	state.unconfirmed.Add(username)
 	state.users.Set(username, "confirmationCode", confirmationCode)
 }
 
-// Remove a user that is registered but not confirmed.
+// RemoveUnconfirmed removes a user from a list of users that are registered, but not confirmed.
 func (state *UserState) RemoveUnconfirmed(username string) {
 	state.unconfirmed.Del(username)
 	state.users.DelKey(username, "confirmationCode")
 }
 
-// Mark a user as confirmed.
+// MarkConfirmed marks a user as being confirmed.
 func (state *UserState) MarkConfirmed(username string) {
 	state.users.Set(username, "confirmed", "true")
 }
 
-// Remove user and login status.
+// RemoveUser removes a user and the login status for this user.
 func (state *UserState) RemoveUser(username string) {
 	state.usernames.Del(username)
 	// Remove additional data as well
@@ -256,17 +258,17 @@ func (state *UserState) RemoveUser(username string) {
 	state.users.Del(username)
 }
 
-// Mark user as an administrator.
+// SetAdminStatus marks a user as an administrator.
 func (state *UserState) SetAdminStatus(username string) {
 	state.users.Set(username, "admin", "true")
 }
 
-// Mark user as a regular user.
+// RemoveAdminStatus removes the administrator status from a user.
 func (state *UserState) RemoveAdminStatus(username string) {
 	state.users.Set(username, "admin", "false")
 }
 
-// Creates a user from the username and password hash, does not check for rights.
+// addUserUnchecked creates a user from the username and password hash, does not check for rights.
 func (state *UserState) addUserUnchecked(username, passwordHash, email string) {
 	// Add the user
 	state.usernames.Add(username)
@@ -282,42 +284,44 @@ func (state *UserState) addUserUnchecked(username, passwordHash, email string) {
 	}
 }
 
-// Creates a user and hashes the password, does not check for rights.
+// AddUser creates a user and hashes the password, does not check for rights.
 // The given data must be valid.
 func (state *UserState) AddUser(username, password, email string) {
 	passwordHash := state.HashPassword(username, password)
 	state.addUserUnchecked(username, passwordHash, email)
 }
 
-// Mark the user as logged in. Use the Login function instead, unless cookies are not involved.
+// SetLoggedIn marks a user as logged in.
+// Use the Login function instead, unless cookies are not involved.
 func (state *UserState) SetLoggedIn(username string) {
 	state.users.Set(username, "loggedin", "true")
 }
 
-// Mark the user as logged out.
+// SetLoggedOut marks a user as logged out.
 func (state *UserState) SetLoggedOut(username string) {
 	state.users.Set(username, "loggedin", "false")
 }
 
-// Convenience function for logging a user in and storing the username in a cookie.
-// Returns an error if the cookie could not be set.
+// Login is a convenience function for logging a user in and storing the
+// username in a cookie. Returns an error if the cookie could not be set.
 func (state *UserState) Login(w http.ResponseWriter, username string) error {
 	state.SetLoggedIn(username)
 	return state.SetUsernameCookie(w, username)
 }
 
-// Try to clear the user cookie by setting it to expired.
+// ClearCookie tries to clear the user cookie by setting it to be expired.
 // Some browsers *may* be configured to keep cookies even after this.
 func (state *UserState) ClearCookie(w http.ResponseWriter) {
 	cookie.ClearCookie(w, "user", "/")
 }
 
-// Convenience function for logging a user out.
+// Logout is a convenience function for logging out a user.
 func (state *UserState) Logout(username string) {
 	state.SetLoggedOut(username)
 }
 
-// Convenience function that will return a username (from the browser cookie) or an empty string.
+// Username is a convenience function for returning the current username
+// (from the browser cookie), or an empty string.
 func (state *UserState) Username(req *http.Request) string {
 	username, err := state.UsernameCookie(req)
 	if err != nil {
@@ -326,29 +330,32 @@ func (state *UserState) Username(req *http.Request) string {
 	return username
 }
 
-// Get how long a login cookie should last, in seconds.
+// CookieTimeout returns the current login cookie timeout, in seconds.
 func (state *UserState) CookieTimeout(username string) int64 {
 	return state.cookieTime
 }
 
-// Set how long a login cookie should last, in seconds.
+// SetCookieTimeout sets how long a login cookie should last, in seconds.
 func (state *UserState) SetCookieTimeout(cookieTime int64) {
 	state.cookieTime = cookieTime
 }
 
-// Get the current password hashing algorithm.
+// PasswordAlgo returns the current password hashing algorithm.
 func (state *UserState) PasswordAlgo() string {
 	return state.passwordAlgorithm
 }
 
-// Set the password hashing algorithm that should be used.
-// The default is "bcrypt+".
-// Possible values are:
-//    bcrypt  -> Store and check passwords with the bcrypt hash.
-//    sha256  -> Store and check passwords with the sha256 hash.
-//    bcrypt+ -> Store passwords with bcrypt, but check with both
-//               bcrypt and sha256, for backwards compatibility
-//               with old passwords that has been stored as sha256.
+/*SetPasswordAlgo determines which password hashing algorithm should be used.
+ *
+ * The default value is "bcrypt+".
+ *
+ * Possible values are:
+ *    bcrypt  -> Store and check passwords with the bcrypt hash.
+ *    sha256  -> Store and check passwords with the sha256 hash.
+ *    bcrypt+ -> Store passwords with bcrypt, but check with both
+ *               bcrypt and sha256, for backwards compatibility
+ *               with old passwords that has been stored as sha256.
+ */
 func (state *UserState) SetPasswordAlgo(algorithm string) error {
 	switch algorithm {
 	case "sha256", "bcrypt", "bcrypt+":
@@ -359,7 +366,8 @@ func (state *UserState) SetPasswordAlgo(algorithm string) error {
 	return nil
 }
 
-// Hash the password (takes a username as well, it can be used for salting).
+// HashPassword takes a password and creates a password hash.
+// It also takes a username, since some algorithms may use it for salt.
 func (state *UserState) HashPassword(username, password string) string {
 	switch state.passwordAlgorithm {
 	case "sha256":
@@ -380,7 +388,8 @@ func (state *UserState) storedHash(username string) []byte {
 	return []byte(hashString)
 }
 
-// Check if a password is correct. username is needed because it is part of the hash.
+// CorrectPassword checks if a password is correct. "username" is needed because
+// it may be part of the hash for some password hashing algorithms.
 func (state *UserState) CorrectPassword(username, password string) bool {
 
 	if !state.HasUser(username) {
