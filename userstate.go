@@ -411,15 +411,14 @@ func (state *UserState) CorrectPassword(username, password string) bool {
 	case "bcrypt+": // for backwards compatibility with sha256
 		if isSha256(hash) && correctSha256(hash, state.cookieSecret, username, password) {
 			return true
-		} else {
-			return correctBcrypt(hash, password)
 		}
+		return correctBcrypt(hash, password)
 	}
 	return false
 }
 
-// Goes through all the confirmationCodes of all the unconfirmed users
-// and checks if this confirmationCode already is in use.
+// AlreadyHasConfirmationCode goes through all the confirmationCodes of all
+// the unconfirmed users and checks if this confirmationCode already is in use.
 func (state *UserState) AlreadyHasConfirmationCode(confirmationCode string) bool {
 	unconfirmedUsernames, err := state.AllUnconfirmedUsernames()
 	if err != nil {
@@ -439,7 +438,8 @@ func (state *UserState) AlreadyHasConfirmationCode(confirmationCode string) bool
 	return false
 }
 
-// Given a unique confirmation code, find the corresponding username.
+// FindUserByConfirmationCode tries to find the corresponding username,
+// given a unique confirmation code.
 func (state *UserState) FindUserByConfirmationCode(confirmationcode string) (string, error) {
 	unconfirmedUsernames, err := state.AllUnconfirmedUsernames()
 	if err != nil {
@@ -473,7 +473,8 @@ func (state *UserState) FindUserByConfirmationCode(confirmationcode string) (str
 	return username, nil
 }
 
-// Remove the username from the list of unconfirmed users and mark the user as confirmed.
+// Confirm marks a user as confirmed, and removes the username from the list
+// of unconfirmed users.
 func (state *UserState) Confirm(username string) {
 	// Remove from the list of unconfirmed usernames
 	state.RemoveUnconfirmed(username)
@@ -482,22 +483,25 @@ func (state *UserState) Confirm(username string) {
 	state.MarkConfirmed(username)
 }
 
-// Take a confirmation code and mark the corresponding unconfirmed user as confirmed.
+// ConfirmUserByConfirmationCode takes a unique confirmation code and marks
+// the corresponding unconfirmed user as confirmed.
 func (state *UserState) ConfirmUserByConfirmationCode(confirmationcode string) error {
-	if username, err := state.FindUserByConfirmationCode(confirmationcode); err != nil {
+	username, err := state.FindUserByConfirmationCode(confirmationcode)
+	if err != nil {
 		return err
-	} else {
-		state.Confirm(username)
 	}
+	state.Confirm(username)
 	return nil
 }
 
-// Set the minimum length of the user confirmation code. The default is 20.
+// SetMinimumConfirmationCodeLength sets the minimum length of the user
+// confirmation code. The default is 20.
 func (state *UserState) SetMinimumConfirmationCodeLength(length int) {
 	minConfirmationCodeLength = length
 }
 
-// Generate a unique confirmation code that can be used for confirming users.
+// GenerateUniqueConfirmationCode generates a unique confirmation code that
+// can be used for confirming users.
 func (state *UserState) GenerateUniqueConfirmationCode() (string, error) {
 	const maxConfirmationCodeLength = 100 // when are the generated confirmation codes unreasonably long
 	length := minConfirmationCodeLength
@@ -514,14 +518,15 @@ func (state *UserState) GenerateUniqueConfirmationCode() (string, error) {
 	return confirmationCode, nil
 }
 
-// Check that the given username and password are different.
-// Also check if the chosen username only contains letters, numbers and/or underscore.
-// Use the "CorrectPassword" function for checking if the password is correct.
+// ValidUsernamePassword only checks if the given username and password are
+// different and if they only contain letters, numbers and/or underscore.
+// For checking if a given password is correct, use the `CorrectPassword`
+// function instead.
 func ValidUsernamePassword(username, password string) error {
-	const allowed_letters = "abcdefghijklmnopqrstuvwxyzæøåABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ_0123456789"
+	const allowedLetters = "abcdefghijklmnopqrstuvwxyzæøåABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ_0123456789"
 NEXT:
 	for _, letter := range username {
-		for _, allowedLetter := range allowed_letters {
+		for _, allowedLetter := range allowedLetters {
 			if letter == allowedLetter {
 				continue NEXT // check the next letter in the username
 			}
@@ -534,12 +539,12 @@ NEXT:
 	return nil
 }
 
-// Get the users HashMap.
+// Users returns a hash map of all the users.
 func (state *UserState) Users() pinterface.IHashMap {
 	return state.users
 }
 
-// Return a struct for creating datastructures
+// Creator returns a struct for creating data structures.
 func (state *UserState) Creator() pinterface.ICreator {
 	return simplebolt.NewCreator(state.db)
 }
