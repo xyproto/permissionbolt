@@ -1,4 +1,5 @@
-#Permissionbolt [![Build Status](https://travis-ci.org/xyproto/permissionbolt.svg?branch=master)](https://travis-ci.org/xyproto/permissionbolt) [![GoDoc](https://godoc.org/github.com/xyproto/permissionbolt?status.svg)](http://godoc.org/github.com/xyproto/permissionbolt)
+#Permissionbolt [![Build Status](https://travis-ci.org/xyproto/permissionbolt.svg?branch=master)](https://travis-ci.org/xyproto/permissionbolt) [![GoDoc](https://godoc.org/github.com/xyproto/permissionbolt?status.svg)](http://godoc.org/github.com/xyproto/permissionbolt) [![Report Card](https://img.shields.io/badge/go_report-A+-brightgreen.svg?style=flat)](http://goreportcard.com/report/xyproto/permissionbolt)
+
 
 Middleware for keeping track of users, login states and permissions.
 
@@ -715,7 +716,7 @@ import (
 
 type permissionHandler struct {
 	// perm is a Permissions structure that can be used to deny requests
-	// and aquire the UserState. By using `pinterface.IPermissions` instead
+	// and acquire the UserState. By using `pinterface.IPermissions` instead
 	// of `*permissionbolt.Permissions`, the code is compatible with not only
 	// `permissionbolt`, but also other modules that uses other database
 	// backends, like `permissions2` which uses Redis.
