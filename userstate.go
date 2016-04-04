@@ -379,6 +379,12 @@ func (state *UserState) HashPassword(username, password string) string {
 	return ""
 }
 
+// SetPassword sets/changes the password for a user.
+// Does not take a password hash, will hash the password string.
+func (state *UserState) SetPassword(username, password string) {
+	state.users.Set(username, "password", state.HashPassword(username, password))
+}
+
 // Return the stored hash, or an empty byte slice.
 func (state *UserState) storedHash(username string) []byte {
 	hashString, err := state.PasswordHash(username)
