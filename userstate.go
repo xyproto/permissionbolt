@@ -363,16 +363,16 @@ func (state *UserState) SetPasswordAlgo(algorithm string) error {
 func (state *UserState) HashPassword(username, password string) string {
 	switch state.passwordAlgorithm {
 	case "sha256":
-		return string(hash_sha256(state.cookieSecret, username, password))
+		return string(hashSha256(state.cookieSecret, username, password))
 	case "bcrypt", "bcrypt+":
-		return string(hash_bcrypt(password))
+		return string(hashBcrypt(password))
 	}
 	// Only valid password algorithms should be allowed to set
 	return ""
 }
 
 // Return the stored hash, or an empty byte slice.
-func (state *UserState) stored_hash(username string) []byte {
+func (state *UserState) storedHash(username string) []byte {
 	hashString, err := state.PasswordHash(username)
 	if err != nil {
 		return []byte{}
@@ -388,7 +388,7 @@ func (state *UserState) CorrectPassword(username, password string) bool {
 	}
 
 	// Retrieve the stored password hash
-	hash := state.stored_hash(username)
+	hash := state.storedHash(username)
 	if len(hash) == 0 {
 		return false
 	}
@@ -396,14 +396,14 @@ func (state *UserState) CorrectPassword(username, password string) bool {
 	// Check the password with the right password algorithm
 	switch state.passwordAlgorithm {
 	case "sha256":
-		return correct_sha256(hash, state.cookieSecret, username, password)
+		return correctSha256(hash, state.cookieSecret, username, password)
 	case "bcrypt":
-		return correct_bcrypt(hash, password)
+		return correctBcrypt(hash, password)
 	case "bcrypt+": // for backwards compatibility with sha256
-		if is_sha256(hash) && correct_sha256(hash, state.cookieSecret, username, password) {
+		if isSha256(hash) && correctSha256(hash, state.cookieSecret, username, password) {
 			return true
 		} else {
-			return correct_bcrypt(hash, password)
+			return correctBcrypt(hash, password)
 		}
 	}
 	return false
