@@ -261,7 +261,7 @@ func main() {
 		// Check if the user has the right admin/user rights
 		if perm.Rejected(c.Writer, c.Request) {
 			// Deny the request, don't call other middleware handlers
-			c.Abort(http.StatusForbidden)
+			c.AbortWithStatus(http.StatusForbidden)
 			fmt.Fprint(c.Writer, "Permission denied!")
 			return
 		}
@@ -849,7 +849,7 @@ Default permissions
 * These path prefixes has user rights by default: */repo* and */data*
 * These path prefixes are public by default: */*, */login*, */register*, */style*, */img*, */js*, */favicon.ico*, */robots.txt* and */sitemap_index.xml*
 
-The default permissions can be cleared with the Clear() function.
+The default permissions can be cleared with the `Clear()` function.
 
 
 Password hashing
@@ -884,5 +884,5 @@ General information
 
 * Version: 2.0
 * License: MIT
-* Alexander F Rødseth
+* Alexander F Rødseth <xyproto@archlinux.org>
 
