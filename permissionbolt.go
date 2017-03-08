@@ -112,7 +112,7 @@ func PermissionDenied(w http.ResponseWriter, req *http.Request) {
 
 // Rejected checks if a given http request should be rejected
 func (perm *Permissions) Rejected(w http.ResponseWriter, req *http.Request) bool {
-	path := req.URL.Path // the path of the url that the user wish to visit
+	path := req.URL.Path // the path of the URL that the user wish to visit
 
 	// If it's not "/" and set to be public regardless of permissions
 	if !(perm.rootIsPublic && path == "/") {
