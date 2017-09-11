@@ -630,7 +630,7 @@ Online API Documentation
 General information
 -------------------
 
-* Version: 2.0
+* Version: 2.3
 * License: MIT
-* Alexander F Rødseth <xyproto@archlinux.org>
+* Alexander F Rødseth &lt;xyproto@archlinux.org&gt;
 
