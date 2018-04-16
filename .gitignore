@@ -34,3 +34,4 @@ examples/macaron/macaron
 examples/echo/echo
 examples/http/http
 examples/goji/goji
+examples/iris/iris
