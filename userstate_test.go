@@ -214,5 +214,9 @@ func TestChangePassword(t *testing.T) {
 		t.Error("Error, password is incorrect: should not be hunter2!")
 	}
 
+	if len(userstate.Properties("bob")) != 5 {
+		t.Error("Not 5 properties for bob, but", len(userstate.Properties("bob")))
+	}
+
 	userstate.RemoveUser("bob")
 }
