@@ -750,6 +750,43 @@ Online API Documentation
 [godoc.org](http://godoc.org/github.com/xyproto/permissionbolt)
 
 
+Retrieving the underlying Bolt database
+---------------------------------------
+
+Here is a short example application for retrieving the underlying Bolt database:
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/coreos/bbolt"
+	"github.com/xyproto/permissionbolt"
+	"os"
+)
+
+func main() {
+	perm, err := permissionbolt.NewWithConf("/tmp/_tmp_bolt.db")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not open Bolt database: %s\n", err)
+		os.Exit(1)
+	}
+	ustate := perm.UserState()
+
+	// A bit of checking is needed, since the database backend is interchangeable
+	pustate, ok := ustate.(*permissionbolt.UserState)
+	if !ok {
+		fmt.Fprintln(os.Stderr, "Not using the BoltDB database backend!")
+		os.Exit(1)
+	}
+
+	// Retrieve the Bolt Database from the permissionbolt.UserState
+	db := (*bolt.DB)(pustate.Database())
+
+	fmt.Printf("%v (%T)\n", db, db)
+}
+```
+
 General information
 -------------------
 
