@@ -731,18 +731,11 @@ Password hashing
 * For backwards compatibility, old password hashes with the length of a sha256 hash will be checked with sha256. To disable this behavior, and only ever use bcrypt, add this line: `userstate.SetPasswordAlgo("bcrypt")`
 
 
-Additional resources
---------------------
-
-* Here is a short code snippet for retrieving the underlying Bolt database: https://gist.github.com/xyproto/87d95ea79ad1019d3599
-
-
 Coding style
 ------------
 
 * log.Fatal or panic shall only be used for problems that may occur when starting the application, like not being able to connect to the database. The rest of the functions should return errors instead, so that they can be handled.
 * The code shall always be formatted with `go fmt`.
-
 
 Online API Documentation
 ------------------------
@@ -786,6 +779,10 @@ func main() {
 	fmt.Printf("%v (%T)\n", db, db)
 }
 ```
+
+<!--
+* Here is a short code snippet for retrieving the underlying Bolt database: https://gist.github.com/xyproto/87d95ea79ad1019d3599
+-->
 
 General information
 -------------------
