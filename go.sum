@@ -36,8 +36,8 @@ github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/google/go-querystring v1.0.0 h1:Xkwi/a1rcvNg1PPYe5vI8GbeBY/jrVuDX5ASuANWTrk=
 github.com/google/go-querystring v1.0.0/go.mod h1:odCYkC5MyYFN7vkCjXpyrEuKhc/BUO6wN/zVPAxq5ck=
-github.com/gopherjs/gopherjs v0.0.0-20181003052733-bf5fc7d38140 h1:xUNgm/qAe2iOwkqf230y9I1zOlqgq0gjOJ3RcIIJIoQ=
-github.com/gopherjs/gopherjs v0.0.0-20181003052733-bf5fc7d38140/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
+github.com/gopherjs/gopherjs v0.0.0-20181004054836-b337c879405b h1:GNQ7d+Yd0/oSXSQz3JR4X56R4w9EgtkuriMvbP7b2e8=
+github.com/gopherjs/gopherjs v0.0.0-20181004054836-b337c879405b/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/hashicorp/go-version v1.0.0 h1:21MVWPKDphxa7ineQQTrCU5brh7OuVVAzGOCnnCPtE8=
 github.com/hashicorp/go-version v1.0.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hpcloud/tail v1.0.0 h1:nfCOvKYfkgYP8hkirhJocXT2+zOD8yUNjXaWfTlyFKI=
@@ -116,10 +116,10 @@ github.com/xeipuuv/gojsonschema v0.0.0-20180816142147-da425ebb7609 h1:BcMExZAULP
 github.com/xeipuuv/gojsonschema v0.0.0-20180816142147-da425ebb7609/go.mod h1:5yf86TLmAcydyeJq5YvxkGPE2fm/u4myDekKRoLuqhs=
 github.com/xyproto/cookie v0.0.0-20171003173729-8ce3defb0907 h1:9qqWk6/29cweeD27aMqGSdk/3/Zp9/wKTQLhXfR3ix0=
 github.com/xyproto/cookie v0.0.0-20171003173729-8ce3defb0907/go.mod h1:Jkc0U5QghR0GdJHVetkXRYMciw3dGqpLR69uw8vutsY=
-github.com/xyproto/pinterface v0.0.0-20170615103324-05fa0e308066 h1:g7EPC/RFOb8clB40Mx8RDgcnyn6e5IDZxer800AABS8=
-github.com/xyproto/pinterface v0.0.0-20170615103324-05fa0e308066/go.mod h1:BzQLxcJwPQpzFgOyNEL02hGO5T4VqXB1BX+lp5bE040=
-github.com/xyproto/simplebolt v0.0.0-20181003171159-9a19ee106f39 h1:yY3VoqI9spH+L1Lgw/D/0hYetQB4ZGArhIDW1O5/Mpo=
-github.com/xyproto/simplebolt v0.0.0-20181003171159-9a19ee106f39/go.mod h1:BqwkvPBMvMo1xAUG4zAAKIWoT4TDgoz0/2ReVQmR6zg=
+github.com/xyproto/pinterface v0.0.0-20181004125811-9710ef24b684 h1:NFSurCu+HqTKLlURDwnZL2J6GQv4WKzGBuFdrO8Rimc=
+github.com/xyproto/pinterface v0.0.0-20181004125811-9710ef24b684/go.mod h1:BzQLxcJwPQpzFgOyNEL02hGO5T4VqXB1BX+lp5bE040=
+github.com/xyproto/simplebolt v0.0.0-20181004130618-617dc386952f h1:qtp3TMYUA+Bv1vPEwRpjdq0NIik89Al5QdamqWNhpfE=
+github.com/xyproto/simplebolt v0.0.0-20181004130618-617dc386952f/go.mod h1:E/j80yRqYacgLGrLmssLPDBqjAW+E+fMV5Wb+IogcLE=
 github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0 h1:6fRhSjgLCkTD3JnJxvaJ4Sj+TYblw757bqYgZaOq5ZY=
 github.com/yalp/jsonpath v0.0.0-20180802001716-5cc68e5049a0/go.mod h1:/LWChgwKmvncFJFHJ7Gvn9wZArjbV5/FppcK2fKk/tI=
 github.com/yudai/gojsondiff v1.0.0 h1:27cbfqXLVEJ1o8I6v3y9lg8Ydm53EKqHXAOMxEGlCOA=

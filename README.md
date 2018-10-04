@@ -787,7 +787,7 @@ func main() {
 General information
 -------------------
 
-* Version: 2.3
+* Version: 2.4.0
 * License: MIT
-* Alexander F Rødseth &lt;xyproto@archlinux.org&gt;
+* Alexander F. Rødseth &lt;xyproto@archlinux.org&gt;
 

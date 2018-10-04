@@ -598,7 +598,7 @@ func (state *UserState) Creator() pinterface.ICreator {
 // Properties returns a list of user properties.
 // Returns an empty list if the user has no properties.
 func (state *UserState) Properties(username string) []string {
-	props, err := state.users.Properties(username)
+	props, err := state.users.Keys(username)
 	if err != nil {
 		return []string{}
 	}

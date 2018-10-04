@@ -102,9 +102,9 @@ github.com/ugorji/go/codec
 github.com/urfave/negroni
 # github.com/xyproto/cookie v0.0.0-20171003173729-8ce3defb0907
 github.com/xyproto/cookie
-# github.com/xyproto/pinterface v0.0.0-20170615103324-05fa0e308066
+# github.com/xyproto/pinterface v0.0.0-20181004125811-9710ef24b684
 github.com/xyproto/pinterface
-# github.com/xyproto/simplebolt v0.0.0-20181003171159-9a19ee106f39
+# github.com/xyproto/simplebolt v0.0.0-20181004130618-617dc386952f
 github.com/xyproto/simplebolt
 # github.com/zenazn/goji v0.9.0
 github.com/zenazn/goji
