@@ -109,6 +109,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -126,7 +127,7 @@ const (
 
 	// arrayCacheLen is the length of the cache used in encoder or decoder for
 	// allowing zero-alloc initialization.
-	arrayCacheLen = 8
+	// arrayCacheLen = 8
 
 	// size of the cacheline: defaulting to value for archs: amd64, arm64, 386
 	// should use "runtime/internal/sys".CacheLineSize, but that is not exposed.
@@ -138,18 +139,17 @@ const (
 	// so structFieldInfo fits into 8 bytes
 	maxLevelsEmbedding = 14
 
-	// finalizers are used? to Close Encoder/Decoder when they are GC'ed
-	// so that their pooled resources are returned.
+	// useFinalizers=true configures finalizers to release pool'ed resources
+	// acquired by Encoder/Decoder during their GC.
 	//
 	// Note that calling SetFinalizer is always expensive,
 	// as code must be run on the systemstack even for SetFinalizer(t, nil).
 	//
-	// We document that folks SHOULD call Close() when done, or they can
+	// We document that folks SHOULD call Release() when done, or they can
 	// explicitly call SetFinalizer themselves e.g.
-	//    runtime.SetFinalizer(e, (*Encoder).Close)
-	//    runtime.SetFinalizer(d, (*Decoder).Close)
-	useFinalizers          = false
-	removeFinalizerOnClose = false
+	//    runtime.SetFinalizer(e, (*Encoder).Release)
+	//    runtime.SetFinalizer(d, (*Decoder).Release)
+	useFinalizers = false
 )
 
 var oneByteArr [1]byte
@@ -522,6 +522,11 @@ type BasicHandle struct {
 
 	intf2impls
 
+	inited uint32
+	_      uint32 // padding
+
+	// ---- cache line
+
 	RPCOptions
 
 	// TimeNotBuiltin configures whether time.Time should be treated as a builtin type.
@@ -536,22 +541,28 @@ type BasicHandle struct {
 	// (for Cbor and Msgpack), where time.Time was not a builtin supported type.
 	TimeNotBuiltin bool
 
-	// DoNotClose configures whether Close() is implicitly called after an encode or
+	// ExplicitRelease configures whether Release() is implicitly called after an encode or
 	// decode call.
 	//
 	// If you will hold onto an Encoder or Decoder for re-use, by calling Reset(...)
-	// on it, then you do not want it to be implicitly closed after each Encode/Decode call.
+	// on it or calling (Must)Encode repeatedly into a given []byte or io.Writer,
+	// then you do not want it to be implicitly closed after each Encode/Decode call.
 	// Doing so will unnecessarily return resources to the shared pool, only for you to
 	// grab them right after again to do another Encode/Decode call.
 	//
-	// Instead, you configure DoNotClose=true, and you explicitly call Close() when
+	// Instead, you configure ExplicitRelease=true, and you explicitly call Release() when
 	// you are truly done.
 	//
 	// As an alternative, you can explicitly set a finalizer - so its resources
 	// are returned to the shared pool before it is garbage-collected. Do it as below:
-	//    runtime.SetFinalizer(e, (*Encoder).Close)
-	//    runtime.SetFinalizer(d, (*Decoder).Close)
-	DoNotClose bool
+	//    runtime.SetFinalizer(e, (*Encoder).Release)
+	//    runtime.SetFinalizer(d, (*Decoder).Release)
+	ExplicitRelease bool
+
+	be bool   // is handle a binary encoding?
+	js bool   // is handle javascript handler?
+	n  byte   // first letter of handle name
+	_  uint16 // padding
 
 	// ---- cache line
 
@@ -562,6 +573,21 @@ type BasicHandle struct {
 	EncodeOptions
 
 	// noBuiltInTypeChecker
+
+	rtidFns atomicRtidFnSlice
+	mu      sync.Mutex
+	// r []uintptr     // rtids mapped to s above
+}
+
+// basicHandle returns an initialized BasicHandle from the Handle.
+func basicHandle(hh Handle) (x *BasicHandle) {
+	x = hh.getBasicHandle()
+	if atomic.CompareAndSwapUint32(&x.inited, 0, 1) {
+		x.be = hh.isBinary()
+		_, x.js = hh.(*JsonHandle)
+		x.n = hh.Name()[0]
+	}
+	return
 }
 
 func (x *BasicHandle) getBasicHandle() *BasicHandle {
@@ -573,6 +599,244 @@ func (x *BasicHandle) getTypeInfo(rtid uintptr, rt reflect.Type) (pti *typeInfo)
 		return defTypeInfos.get(rtid, rt)
 	}
 	return x.TypeInfos.get(rtid, rt)
+}
+
+func findFn(s []codecRtidFn, rtid uintptr) (i uint, fn *codecFn) {
+	// binary search. adapted from sort/search.go.
+	// Note: we use goto (instead of for loop) so this can be inlined.
+
+	// h, i, j := 0, 0, len(s)
+	var h uint // var h, i uint
+	var j = uint(len(s))
+LOOP:
+	if i < j {
+		h = i + (j-i)/2
+		if s[h].rtid < rtid {
+			i = h + 1
+		} else {
+			j = h
+		}
+		goto LOOP
+	}
+	if i < uint(len(s)) && s[i].rtid == rtid {
+		fn = s[i].fn
+	}
+	return
+}
+
+func (x *BasicHandle) fn(rt reflect.Type, checkFastpath, checkCodecSelfer bool) (fn *codecFn) {
+	rtid := rt2id(rt)
+	sp := x.rtidFns.load()
+	if sp != nil {
+		if _, fn = findFn(sp, rtid); fn != nil {
+			// xdebugf("<<<< %c: found fn for %v in rtidfns of size: %v", c.n, rt, len(sp))
+			return
+		}
+	}
+	c := x
+	// xdebugf("#### for %c: load fn for %v in rtidfns of size: %v", c.n, rt, len(sp))
+	fn = new(codecFn)
+	fi := &(fn.i)
+	ti := c.getTypeInfo(rtid, rt)
+	fi.ti = ti
+
+	rk := reflect.Kind(ti.kind)
+
+	if checkCodecSelfer && (ti.cs || ti.csp) {
+		fn.fe = (*Encoder).selferMarshal
+		fn.fd = (*Decoder).selferUnmarshal
+		fi.addrF = true
+		fi.addrD = ti.csp
+		fi.addrE = ti.csp
+	} else if rtid == timeTypId && !c.TimeNotBuiltin {
+		fn.fe = (*Encoder).kTime
+		fn.fd = (*Decoder).kTime
+	} else if rtid == rawTypId {
+		fn.fe = (*Encoder).raw
+		fn.fd = (*Decoder).raw
+	} else if rtid == rawExtTypId {
+		fn.fe = (*Encoder).rawExt
+		fn.fd = (*Decoder).rawExt
+		fi.addrF = true
+		fi.addrD = true
+		fi.addrE = true
+	} else if xfFn := c.getExt(rtid); xfFn != nil {
+		fi.xfTag, fi.xfFn = xfFn.tag, xfFn.ext
+		fn.fe = (*Encoder).ext
+		fn.fd = (*Decoder).ext
+		fi.addrF = true
+		fi.addrD = true
+		if rk == reflect.Struct || rk == reflect.Array {
+			fi.addrE = true
+		}
+	} else if supportMarshalInterfaces && c.be && (ti.bm || ti.bmp) && (ti.bu || ti.bup) {
+		fn.fe = (*Encoder).binaryMarshal
+		fn.fd = (*Decoder).binaryUnmarshal
+		fi.addrF = true
+		fi.addrD = ti.bup
+		fi.addrE = ti.bmp
+	} else if supportMarshalInterfaces && !c.be && c.js && (ti.jm || ti.jmp) && (ti.ju || ti.jup) {
+		//If JSON, we should check JSONMarshal before textMarshal
+		fn.fe = (*Encoder).jsonMarshal
+		fn.fd = (*Decoder).jsonUnmarshal
+		fi.addrF = true
+		fi.addrD = ti.jup
+		fi.addrE = ti.jmp
+	} else if supportMarshalInterfaces && !c.be && (ti.tm || ti.tmp) && (ti.tu || ti.tup) {
+		fn.fe = (*Encoder).textMarshal
+		fn.fd = (*Decoder).textUnmarshal
+		fi.addrF = true
+		fi.addrD = ti.tup
+		fi.addrE = ti.tmp
+	} else {
+		if fastpathEnabled && checkFastpath && (rk == reflect.Map || rk == reflect.Slice) {
+			if ti.pkgpath == "" { // un-named slice or map
+				if idx := fastpathAV.index(rtid); idx != -1 {
+					fn.fe = fastpathAV[idx].encfn
+					fn.fd = fastpathAV[idx].decfn
+					fi.addrD = true
+					fi.addrF = false
+				}
+			} else {
+				// use mapping for underlying type if there
+				var rtu reflect.Type
+				if rk == reflect.Map {
+					rtu = reflect.MapOf(ti.key, ti.elem)
+				} else {
+					rtu = reflect.SliceOf(ti.elem)
+				}
+				rtuid := rt2id(rtu)
+				if idx := fastpathAV.index(rtuid); idx != -1 {
+					xfnf := fastpathAV[idx].encfn
+					xrt := fastpathAV[idx].rt
+					fn.fe = func(e *Encoder, xf *codecFnInfo, xrv reflect.Value) {
+						xfnf(e, xf, xrv.Convert(xrt))
+					}
+					fi.addrD = true
+					fi.addrF = false // meaning it can be an address(ptr) or a value
+					xfnf2 := fastpathAV[idx].decfn
+					fn.fd = func(d *Decoder, xf *codecFnInfo, xrv reflect.Value) {
+						if xrv.Kind() == reflect.Ptr {
+							xfnf2(d, xf, xrv.Convert(reflect.PtrTo(xrt)))
+						} else {
+							xfnf2(d, xf, xrv.Convert(xrt))
+						}
+					}
+				}
+			}
+		}
+		if fn.fe == nil && fn.fd == nil {
+			switch rk {
+			case reflect.Bool:
+				fn.fe = (*Encoder).kBool
+				fn.fd = (*Decoder).kBool
+			case reflect.String:
+				fn.fe = (*Encoder).kString
+				fn.fd = (*Decoder).kString
+			case reflect.Int:
+				fn.fd = (*Decoder).kInt
+				fn.fe = (*Encoder).kInt
+			case reflect.Int8:
+				fn.fe = (*Encoder).kInt8
+				fn.fd = (*Decoder).kInt8
+			case reflect.Int16:
+				fn.fe = (*Encoder).kInt16
+				fn.fd = (*Decoder).kInt16
+			case reflect.Int32:
+				fn.fe = (*Encoder).kInt32
+				fn.fd = (*Decoder).kInt32
+			case reflect.Int64:
+				fn.fe = (*Encoder).kInt64
+				fn.fd = (*Decoder).kInt64
+			case reflect.Uint:
+				fn.fd = (*Decoder).kUint
+				fn.fe = (*Encoder).kUint
+			case reflect.Uint8:
+				fn.fe = (*Encoder).kUint8
+				fn.fd = (*Decoder).kUint8
+			case reflect.Uint16:
+				fn.fe = (*Encoder).kUint16
+				fn.fd = (*Decoder).kUint16
+			case reflect.Uint32:
+				fn.fe = (*Encoder).kUint32
+				fn.fd = (*Decoder).kUint32
+			case reflect.Uint64:
+				fn.fe = (*Encoder).kUint64
+				fn.fd = (*Decoder).kUint64
+			case reflect.Uintptr:
+				fn.fe = (*Encoder).kUintptr
+				fn.fd = (*Decoder).kUintptr
+			case reflect.Float32:
+				fn.fe = (*Encoder).kFloat32
+				fn.fd = (*Decoder).kFloat32
+			case reflect.Float64:
+				fn.fe = (*Encoder).kFloat64
+				fn.fd = (*Decoder).kFloat64
+			case reflect.Invalid:
+				fn.fe = (*Encoder).kInvalid
+				fn.fd = (*Decoder).kErr
+			case reflect.Chan:
+				fi.seq = seqTypeChan
+				fn.fe = (*Encoder).kSlice
+				fn.fd = (*Decoder).kSlice
+			case reflect.Slice:
+				fi.seq = seqTypeSlice
+				fn.fe = (*Encoder).kSlice
+				fn.fd = (*Decoder).kSlice
+			case reflect.Array:
+				fi.seq = seqTypeArray
+				fn.fe = (*Encoder).kSlice
+				fi.addrF = false
+				fi.addrD = false
+				rt2 := reflect.SliceOf(ti.elem)
+				fn.fd = func(d *Decoder, xf *codecFnInfo, xrv reflect.Value) {
+					d.h.fn(rt2, true, false).fd(d, xf, xrv.Slice(0, xrv.Len()))
+				}
+				// fn.fd = (*Decoder).kArray
+			case reflect.Struct:
+				if ti.anyOmitEmpty || ti.mf || ti.mfp {
+					fn.fe = (*Encoder).kStruct
+				} else {
+					fn.fe = (*Encoder).kStructNoOmitempty
+				}
+				fn.fd = (*Decoder).kStruct
+			case reflect.Map:
+				fn.fe = (*Encoder).kMap
+				fn.fd = (*Decoder).kMap
+			case reflect.Interface:
+				// encode: reflect.Interface are handled already by preEncodeValue
+				fn.fd = (*Decoder).kInterface
+				fn.fe = (*Encoder).kErr
+			default:
+				// reflect.Ptr and reflect.Interface are handled already by preEncodeValue
+				fn.fe = (*Encoder).kErr
+				fn.fd = (*Decoder).kErr
+			}
+		}
+	}
+
+	c.mu.Lock()
+	var sp2 []codecRtidFn
+	sp = c.rtidFns.load()
+	if sp == nil {
+		sp2 = []codecRtidFn{{rtid, fn}}
+		c.rtidFns.store(sp2)
+		// xdebugf(">>>> adding rt: %v to rtidfns of size: %v", rt, len(sp2))
+		// xdebugf(">>>> loading stored rtidfns of size: %v", len(c.rtidFns.load()))
+	} else {
+		idx, fn2 := findFn(sp, rtid)
+		if fn2 == nil {
+			sp2 = make([]codecRtidFn, len(sp)+1)
+			copy(sp2, sp[:idx])
+			copy(sp2[idx+1:], sp[idx:])
+			sp2[idx] = codecRtidFn{rtid, fn}
+			c.rtidFns.store(sp2)
+			// xdebugf(">>>> adding rt: %v to rtidfns of size: %v", rt, len(sp2))
+
+		}
+	}
+	c.mu.Unlock()
+	return
 }
 
 // Handle defines a specific encoding format. It also stores any runtime state
@@ -589,6 +853,8 @@ func (x *BasicHandle) getTypeInfo(rtid uintptr, rt reflect.Type) (pti *typeInfo)
 // Such a pre-configured Handle is safe for concurrent access.
 type Handle interface {
 	Name() string
+	// return the basic handle. It may not have been inited.
+	// Prefer to use basicHandle() helper function that ensures it has been inited.
 	getBasicHandle() *BasicHandle
 	recreateEncDriver(encDriver) bool
 	newEncDriver(w *Encoder) encDriver
@@ -1245,7 +1511,7 @@ func (x *TypeInfos) structTag(t reflect.StructTag) (s string) {
 	return
 }
 
-func (x *TypeInfos) find(s []rtid2ti, rtid uintptr) (i uint, ti *typeInfo) {
+func findTypeInfo(s []rtid2ti, rtid uintptr) (i uint, ti *typeInfo) {
 	// binary search. adapted from sort/search.go.
 	// Note: we use goto (instead of for loop) so this can be inlined.
 
@@ -1276,7 +1542,7 @@ LOOP:
 func (x *TypeInfos) get(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
 	sp := x.infos.load()
 	if sp != nil {
-		_, pti = x.find(sp, rtid)
+		_, pti = findTypeInfo(sp, rtid)
 		if pti != nil {
 			return
 		}
@@ -1331,7 +1597,7 @@ func (x *TypeInfos) get(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
 		} else {
 			ti.keyType = valueTypeString
 		}
-		pp, pi := pool.tiLoad()
+		pp, pi := &pool.tiload, pool.tiload.Get() // pool.tiLoad()
 		pv := pi.(*typeInfoLoadArray)
 		pv.etypes[0] = ti.rtid
 		// vv := typeInfoLoad{pv.fNames[:0], pv.encNames[:0], pv.etypes[:1], pv.sfis[:0]}
@@ -1356,20 +1622,21 @@ func (x *TypeInfos) get(rtid uintptr, rt reflect.Type) (pti *typeInfo) {
 
 	x.mu.Lock()
 	sp = x.infos.load()
+	var sp2 []rtid2ti
 	if sp == nil {
 		pti = &ti
-		vs := []rtid2ti{{rtid, pti}}
-		x.infos.store(vs)
+		sp2 = []rtid2ti{{rtid, pti}}
+		x.infos.store(sp2)
 	} else {
 		var idx uint
-		idx, pti = x.find(sp, rtid)
+		idx, pti = findTypeInfo(sp, rtid)
 		if pti == nil {
 			pti = &ti
-			vs := make([]rtid2ti, len(sp)+1)
-			copy(vs, sp[:idx])
-			copy(vs[idx+1:], sp[idx:])
-			vs[idx] = rtid2ti{rtid, pti}
-			x.infos.store(vs)
+			sp2 = make([]rtid2ti, len(sp)+1)
+			copy(sp2, sp[:idx])
+			copy(sp2[idx+1:], sp[idx:])
+			sp2[idx] = rtid2ti{rtid, pti}
+			x.infos.store(sp2)
 		}
 	}
 	x.mu.Unlock()
@@ -1738,7 +2005,6 @@ type codecFnInfo struct {
 	addrD bool
 	addrF bool // if addrD, this says whether decode function can take a value or a ptr
 	addrE bool
-	ready bool // ready to use
 }
 
 // codecFn encapsulates the captured variables and the encode function.
@@ -1755,271 +2021,6 @@ type codecFn struct {
 type codecRtidFn struct {
 	rtid uintptr
 	fn   *codecFn
-}
-
-type codecFner struct {
-	// hh Handle
-	h  *BasicHandle
-	s  []codecRtidFn
-	be bool
-	js bool
-	_  [6]byte   // padding
-	_  [3]uint64 // padding
-}
-
-func (c *codecFner) reset(hh Handle) {
-	bh := hh.getBasicHandle()
-	// only reset iff extensions changed or *TypeInfos changed
-	var hhSame = true &&
-		c.h == bh && c.h.TypeInfos == bh.TypeInfos &&
-		len(c.h.extHandle) == len(bh.extHandle) &&
-		(len(c.h.extHandle) == 0 || &c.h.extHandle[0] == &bh.extHandle[0])
-	if !hhSame {
-		// c.hh = hh
-		c.h, bh = bh, c.h // swap both
-		_ = bh
-		_, c.js = hh.(*JsonHandle)
-		c.be = hh.isBinary()
-		if len(c.s) > 0 {
-			c.s = c.s[:0]
-		}
-		// for i := range c.s {
-		// 	c.s[i].fn.i.ready = false
-		// }
-	}
-}
-
-func (c *codecFner) get(rt reflect.Type, checkFastpath, checkCodecSelfer bool) (fn *codecFn) {
-	rtid := rt2id(rt)
-
-	for _, x := range c.s {
-		if x.rtid == rtid {
-			// if rtid exists, then there's a *codenFn attached (non-nil)
-			fn = x.fn
-			if fn.i.ready {
-				return
-			}
-			break
-		}
-	}
-	var ti *typeInfo
-	if fn == nil {
-		fn = new(codecFn)
-		if c.s == nil {
-			c.s = make([]codecRtidFn, 0, 8)
-		}
-		c.s = append(c.s, codecRtidFn{rtid, fn})
-	} else {
-		ti = fn.i.ti
-		*fn = codecFn{}
-		fn.i.ti = ti
-		// fn.fe, fn.fd = nil, nil
-	}
-	fi := &(fn.i)
-	fi.ready = true
-	if ti == nil {
-		ti = c.h.getTypeInfo(rtid, rt)
-		fi.ti = ti
-	}
-
-	rk := reflect.Kind(ti.kind)
-
-	if checkCodecSelfer && (ti.cs || ti.csp) {
-		fn.fe = (*Encoder).selferMarshal
-		fn.fd = (*Decoder).selferUnmarshal
-		fi.addrF = true
-		fi.addrD = ti.csp
-		fi.addrE = ti.csp
-	} else if rtid == timeTypId && !c.h.TimeNotBuiltin {
-		fn.fe = (*Encoder).kTime
-		fn.fd = (*Decoder).kTime
-	} else if rtid == rawTypId {
-		fn.fe = (*Encoder).raw
-		fn.fd = (*Decoder).raw
-	} else if rtid == rawExtTypId {
-		fn.fe = (*Encoder).rawExt
-		fn.fd = (*Decoder).rawExt
-		fi.addrF = true
-		fi.addrD = true
-		fi.addrE = true
-	} else if xfFn := c.h.getExt(rtid); xfFn != nil {
-		fi.xfTag, fi.xfFn = xfFn.tag, xfFn.ext
-		fn.fe = (*Encoder).ext
-		fn.fd = (*Decoder).ext
-		fi.addrF = true
-		fi.addrD = true
-		if rk == reflect.Struct || rk == reflect.Array {
-			fi.addrE = true
-		}
-	} else if supportMarshalInterfaces && c.be && (ti.bm || ti.bmp) && (ti.bu || ti.bup) {
-		fn.fe = (*Encoder).binaryMarshal
-		fn.fd = (*Decoder).binaryUnmarshal
-		fi.addrF = true
-		fi.addrD = ti.bup
-		fi.addrE = ti.bmp
-	} else if supportMarshalInterfaces && !c.be && c.js && (ti.jm || ti.jmp) && (ti.ju || ti.jup) {
-		//If JSON, we should check JSONMarshal before textMarshal
-		fn.fe = (*Encoder).jsonMarshal
-		fn.fd = (*Decoder).jsonUnmarshal
-		fi.addrF = true
-		fi.addrD = ti.jup
-		fi.addrE = ti.jmp
-	} else if supportMarshalInterfaces && !c.be && (ti.tm || ti.tmp) && (ti.tu || ti.tup) {
-		fn.fe = (*Encoder).textMarshal
-		fn.fd = (*Decoder).textUnmarshal
-		fi.addrF = true
-		fi.addrD = ti.tup
-		fi.addrE = ti.tmp
-	} else {
-		if fastpathEnabled && checkFastpath && (rk == reflect.Map || rk == reflect.Slice) {
-			if ti.pkgpath == "" { // un-named slice or map
-				if idx := fastpathAV.index(rtid); idx != -1 {
-					fn.fe = fastpathAV[idx].encfn
-					fn.fd = fastpathAV[idx].decfn
-					fi.addrD = true
-					fi.addrF = false
-				}
-			} else {
-				// use mapping for underlying type if there
-				var rtu reflect.Type
-				if rk == reflect.Map {
-					rtu = reflect.MapOf(ti.key, ti.elem)
-				} else {
-					rtu = reflect.SliceOf(ti.elem)
-				}
-				rtuid := rt2id(rtu)
-				if idx := fastpathAV.index(rtuid); idx != -1 {
-					xfnf := fastpathAV[idx].encfn
-					xrt := fastpathAV[idx].rt
-					fn.fe = func(e *Encoder, xf *codecFnInfo, xrv reflect.Value) {
-						xfnf(e, xf, xrv.Convert(xrt))
-					}
-					fi.addrD = true
-					fi.addrF = false // meaning it can be an address(ptr) or a value
-					xfnf2 := fastpathAV[idx].decfn
-					fn.fd = func(d *Decoder, xf *codecFnInfo, xrv reflect.Value) {
-						if xrv.Kind() == reflect.Ptr {
-							xfnf2(d, xf, xrv.Convert(reflect.PtrTo(xrt)))
-						} else {
-							xfnf2(d, xf, xrv.Convert(xrt))
-						}
-					}
-				}
-			}
-		}
-		if fn.fe == nil && fn.fd == nil {
-			switch rk {
-			case reflect.Bool:
-				fn.fe = (*Encoder).kBool
-				fn.fd = (*Decoder).kBool
-			case reflect.String:
-				fn.fe = (*Encoder).kString
-				fn.fd = (*Decoder).kString
-			case reflect.Int:
-				fn.fd = (*Decoder).kInt
-				fn.fe = (*Encoder).kInt
-			case reflect.Int8:
-				fn.fe = (*Encoder).kInt8
-				fn.fd = (*Decoder).kInt8
-			case reflect.Int16:
-				fn.fe = (*Encoder).kInt16
-				fn.fd = (*Decoder).kInt16
-			case reflect.Int32:
-				fn.fe = (*Encoder).kInt32
-				fn.fd = (*Decoder).kInt32
-			case reflect.Int64:
-				fn.fe = (*Encoder).kInt64
-				fn.fd = (*Decoder).kInt64
-			case reflect.Uint:
-				fn.fd = (*Decoder).kUint
-				fn.fe = (*Encoder).kUint
-			case reflect.Uint8:
-				fn.fe = (*Encoder).kUint8
-				fn.fd = (*Decoder).kUint8
-			case reflect.Uint16:
-				fn.fe = (*Encoder).kUint16
-				fn.fd = (*Decoder).kUint16
-			case reflect.Uint32:
-				fn.fe = (*Encoder).kUint32
-				fn.fd = (*Decoder).kUint32
-			case reflect.Uint64:
-				fn.fe = (*Encoder).kUint64
-				fn.fd = (*Decoder).kUint64
-			case reflect.Uintptr:
-				fn.fe = (*Encoder).kUintptr
-				fn.fd = (*Decoder).kUintptr
-			case reflect.Float32:
-				fn.fe = (*Encoder).kFloat32
-				fn.fd = (*Decoder).kFloat32
-			case reflect.Float64:
-				fn.fe = (*Encoder).kFloat64
-				fn.fd = (*Decoder).kFloat64
-			case reflect.Invalid:
-				fn.fe = (*Encoder).kInvalid
-				fn.fd = (*Decoder).kErr
-			case reflect.Chan:
-				fi.seq = seqTypeChan
-				fn.fe = (*Encoder).kSlice
-				fn.fd = (*Decoder).kSlice
-			case reflect.Slice:
-				fi.seq = seqTypeSlice
-				fn.fe = (*Encoder).kSlice
-				fn.fd = (*Decoder).kSlice
-			case reflect.Array:
-				fi.seq = seqTypeArray
-				fn.fe = (*Encoder).kSlice
-				fi.addrF = false
-				fi.addrD = false
-				rt2 := reflect.SliceOf(ti.elem)
-				fn.fd = func(d *Decoder, xf *codecFnInfo, xrv reflect.Value) {
-					d.cfer().get(rt2, true, false).fd(d, xf, xrv.Slice(0, xrv.Len()))
-				}
-				// fn.fd = (*Decoder).kArray
-			case reflect.Struct:
-				if ti.anyOmitEmpty || ti.mf || ti.mfp {
-					fn.fe = (*Encoder).kStruct
-				} else {
-					fn.fe = (*Encoder).kStructNoOmitempty
-				}
-				fn.fd = (*Decoder).kStruct
-			case reflect.Map:
-				fn.fe = (*Encoder).kMap
-				fn.fd = (*Decoder).kMap
-			case reflect.Interface:
-				// encode: reflect.Interface are handled already by preEncodeValue
-				fn.fd = (*Decoder).kInterface
-				fn.fe = (*Encoder).kErr
-			default:
-				// reflect.Ptr and reflect.Interface are handled already by preEncodeValue
-				fn.fe = (*Encoder).kErr
-				fn.fd = (*Decoder).kErr
-			}
-		}
-	}
-	return
-}
-
-type codecFnPooler struct {
-	cf  *codecFner
-	cfp *sync.Pool
-	hh  Handle
-}
-
-func (d *codecFnPooler) cfer() *codecFner {
-	if d.cf == nil {
-		var v interface{}
-		d.cfp, v = pool.codecFner()
-		d.cf = v.(*codecFner)
-		d.cf.reset(d.hh)
-	}
-	return d.cf
-}
-
-func (d *codecFnPooler) end() {
-	if d.cf != nil {
-		d.cfp.Put(d.cf)
-		d.cf, d.cfp = nil, nil
-	}
 }
 
 // ----
@@ -2370,77 +2371,79 @@ func (x *bitset256) set(pos byte) {
 type pooler struct {
 	// function-scoped pooled resources
 	tiload                                      sync.Pool // for type info loading
-	strRv8, strRv16, strRv32, strRv64, strRv128 sync.Pool // for stringRV
+	sfiRv8, sfiRv16, sfiRv32, sfiRv64, sfiRv128 sync.Pool // for struct encoding
 
 	// lifetime-scoped pooled resources
-	dn                                 sync.Pool // for decNaked
-	cfn                                sync.Pool // for codecFner
-	buf1k, buf2k, buf4k, buf8k, buf16k sync.Pool // for [N]byte
+	// dn                                 sync.Pool // for decNaked
+	buf1k, buf2k, buf4k, buf8k, buf16k, buf32k, buf64k sync.Pool // for [N]byte
 }
 
 func (p *pooler) init() {
-	// function-scoped pooled resources
 	p.tiload.New = func() interface{} { return new(typeInfoLoadArray) }
 
-	p.strRv8.New = func() interface{} { return new([8]sfiRv) }
-	p.strRv16.New = func() interface{} { return new([16]sfiRv) }
-	p.strRv32.New = func() interface{} { return new([32]sfiRv) }
-	p.strRv64.New = func() interface{} { return new([64]sfiRv) }
-	p.strRv128.New = func() interface{} { return new([128]sfiRv) }
+	p.sfiRv8.New = func() interface{} { return new([8]sfiRv) }
+	p.sfiRv16.New = func() interface{} { return new([16]sfiRv) }
+	p.sfiRv32.New = func() interface{} { return new([32]sfiRv) }
+	p.sfiRv64.New = func() interface{} { return new([64]sfiRv) }
+	p.sfiRv128.New = func() interface{} { return new([128]sfiRv) }
 
-	// lifetime-scoped pooled resources
+	// p.dn.New = func() interface{} { x := new(decNaked); x.init(); return x }
+
 	p.buf1k.New = func() interface{} { return new([1 * 1024]byte) }
 	p.buf2k.New = func() interface{} { return new([2 * 1024]byte) }
 	p.buf4k.New = func() interface{} { return new([4 * 1024]byte) }
 	p.buf8k.New = func() interface{} { return new([8 * 1024]byte) }
 	p.buf16k.New = func() interface{} { return new([16 * 1024]byte) }
+	p.buf32k.New = func() interface{} { return new([32 * 1024]byte) }
+	p.buf64k.New = func() interface{} { return new([64 * 1024]byte) }
 
-	p.dn.New = func() interface{} { x := new(decNaked); x.init(); return x }
-
-	p.cfn.New = func() interface{} { return new(codecFner) }
-}
-
-func (p *pooler) sfiRv8() (sp *sync.Pool, v interface{}) {
-	return &p.strRv8, p.strRv8.Get()
-}
-func (p *pooler) sfiRv16() (sp *sync.Pool, v interface{}) {
-	return &p.strRv16, p.strRv16.Get()
-}
-func (p *pooler) sfiRv32() (sp *sync.Pool, v interface{}) {
-	return &p.strRv32, p.strRv32.Get()
-}
-func (p *pooler) sfiRv64() (sp *sync.Pool, v interface{}) {
-	return &p.strRv64, p.strRv64.Get()
-}
-func (p *pooler) sfiRv128() (sp *sync.Pool, v interface{}) {
-	return &p.strRv128, p.strRv128.Get()
 }
 
-func (p *pooler) bytes1k() (sp *sync.Pool, v interface{}) {
-	return &p.buf1k, p.buf1k.Get()
-}
-func (p *pooler) bytes2k() (sp *sync.Pool, v interface{}) {
-	return &p.buf2k, p.buf2k.Get()
-}
-func (p *pooler) bytes4k() (sp *sync.Pool, v interface{}) {
-	return &p.buf4k, p.buf4k.Get()
-}
-func (p *pooler) bytes8k() (sp *sync.Pool, v interface{}) {
-	return &p.buf8k, p.buf8k.Get()
-}
-func (p *pooler) bytes16k() (sp *sync.Pool, v interface{}) {
-	return &p.buf16k, p.buf16k.Get()
-}
+// func (p *pooler) sfiRv8() (sp *sync.Pool, v interface{}) {
+// 	return &p.strRv8, p.strRv8.Get()
+// }
+// func (p *pooler) sfiRv16() (sp *sync.Pool, v interface{}) {
+// 	return &p.strRv16, p.strRv16.Get()
+// }
+// func (p *pooler) sfiRv32() (sp *sync.Pool, v interface{}) {
+// 	return &p.strRv32, p.strRv32.Get()
+// }
+// func (p *pooler) sfiRv64() (sp *sync.Pool, v interface{}) {
+// 	return &p.strRv64, p.strRv64.Get()
+// }
+// func (p *pooler) sfiRv128() (sp *sync.Pool, v interface{}) {
+// 	return &p.strRv128, p.strRv128.Get()
+// }
 
-func (p *pooler) decNaked() (sp *sync.Pool, v interface{}) {
-	return &p.dn, p.dn.Get()
-}
-func (p *pooler) codecFner() (sp *sync.Pool, v interface{}) {
-	return &p.cfn, p.cfn.Get()
-}
-func (p *pooler) tiLoad() (sp *sync.Pool, v interface{}) {
-	return &p.tiload, p.tiload.Get()
-}
+// func (p *pooler) bytes1k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf1k, p.buf1k.Get()
+// }
+// func (p *pooler) bytes2k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf2k, p.buf2k.Get()
+// }
+// func (p *pooler) bytes4k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf4k, p.buf4k.Get()
+// }
+// func (p *pooler) bytes8k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf8k, p.buf8k.Get()
+// }
+// func (p *pooler) bytes16k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf16k, p.buf16k.Get()
+// }
+// func (p *pooler) bytes32k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf32k, p.buf32k.Get()
+// }
+// func (p *pooler) bytes64k() (sp *sync.Pool, v interface{}) {
+// 	return &p.buf64k, p.buf64k.Get()
+// }
+
+// func (p *pooler) tiLoad() (sp *sync.Pool, v interface{}) {
+// 	return &p.tiload, p.tiload.Get()
+// }
+
+// func (p *pooler) decNaked() (sp *sync.Pool, v interface{}) {
+// 	return &p.dn, p.dn.Get()
+// }
 
 // func (p *pooler) decNaked() (v *decNaked, f func(*decNaked) ) {
 // 	sp := &(p.dn)
@@ -2450,17 +2453,11 @@ func (p *pooler) tiLoad() (sp *sync.Pool, v interface{}) {
 // func (p *pooler) decNakedGet() (v interface{}) {
 // 	return p.dn.Get()
 // }
-// func (p *pooler) codecFnerGet() (v interface{}) {
-// 	return p.cfn.Get()
-// }
 // func (p *pooler) tiLoadGet() (v interface{}) {
 // 	return p.tiload.Get()
 // }
 // func (p *pooler) decNakedPut(v interface{}) {
 // 	p.dn.Put(v)
-// }
-// func (p *pooler) codecFnerPut(v interface{}) {
-// 	p.cfn.Put(v)
 // }
 // func (p *pooler) tiLoadPut(v interface{}) {
 // 	p.tiload.Put(v)
@@ -2545,21 +2542,105 @@ func (z *bytesBufPooler) end() {
 }
 
 func (z *bytesBufPooler) get(bufsize int) (buf []byte) {
+	// ensure an end is called first (if necessary)
+	if z.pool != nil {
+		z.pool.Put(z.poolbuf)
+		z.pool, z.poolbuf = nil, nil
+	}
+
+	// // Try to use binary search.
+	// // This is not optimal, as most folks select 1k or 2k buffers
+	// // so a linear search is better (sequence of if/else blocks)
+	// if bufsize < 1 {
+	// 	bufsize = 0
+	// } else {
+	// 	bufsize--
+	// 	bufsize /= 1024
+	// }
+	// switch bufsize {
+	// case 0:
+	// 	z.pool, z.poolbuf = pool.bytes1k()
+	// 	buf = z.poolbuf.(*[1 * 1024]byte)[:]
+	// case 1:
+	// 	z.pool, z.poolbuf = pool.bytes2k()
+	// 	buf = z.poolbuf.(*[2 * 1024]byte)[:]
+	// case 2, 3:
+	// 	z.pool, z.poolbuf = pool.bytes4k()
+	// 	buf = z.poolbuf.(*[4 * 1024]byte)[:]
+	// case 4, 5, 6, 7:
+	// 	z.pool, z.poolbuf = pool.bytes8k()
+	// 	buf = z.poolbuf.(*[8 * 1024]byte)[:]
+	// case 8, 9, 10, 11, 12, 13, 14, 15:
+	// 	z.pool, z.poolbuf = pool.bytes16k()
+	// 	buf = z.poolbuf.(*[16 * 1024]byte)[:]
+	// case 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31:
+	// 	z.pool, z.poolbuf = pool.bytes32k()
+	// 	buf = z.poolbuf.(*[32 * 1024]byte)[:]
+	// default:
+	// 	z.pool, z.poolbuf = pool.bytes64k()
+	// 	buf = z.poolbuf.(*[64 * 1024]byte)[:]
+	// }
+	// return
+
 	if bufsize <= 1*1024 {
-		z.pool, z.poolbuf = pool.bytes1k()
+		z.pool, z.poolbuf = &pool.buf1k, pool.buf1k.Get() // pool.bytes1k()
 		buf = z.poolbuf.(*[1 * 1024]byte)[:]
 	} else if bufsize <= 2*1024 {
-		z.pool, z.poolbuf = pool.bytes2k()
+		z.pool, z.poolbuf = &pool.buf2k, pool.buf2k.Get() // pool.bytes2k()
 		buf = z.poolbuf.(*[2 * 1024]byte)[:]
 	} else if bufsize <= 4*1024 {
-		z.pool, z.poolbuf = pool.bytes4k()
+		z.pool, z.poolbuf = &pool.buf4k, pool.buf4k.Get() // pool.bytes4k()
 		buf = z.poolbuf.(*[4 * 1024]byte)[:]
 	} else if bufsize <= 8*1024 {
-		z.pool, z.poolbuf = pool.bytes8k()
+		z.pool, z.poolbuf = &pool.buf8k, pool.buf8k.Get() // pool.bytes8k()
 		buf = z.poolbuf.(*[8 * 1024]byte)[:]
-	} else {
-		z.pool, z.poolbuf = pool.bytes16k()
+	} else if bufsize <= 16*1024 {
+		z.pool, z.poolbuf = &pool.buf16k, pool.buf16k.Get() // pool.bytes16k()
 		buf = z.poolbuf.(*[16 * 1024]byte)[:]
+	} else if bufsize <= 32*1024 {
+		z.pool, z.poolbuf = &pool.buf32k, pool.buf32k.Get() // pool.bytes32k()
+		buf = z.poolbuf.(*[32 * 1024]byte)[:]
+	} else {
+		z.pool, z.poolbuf = &pool.buf64k, pool.buf64k.Get() // pool.bytes64k()
+		buf = z.poolbuf.(*[64 * 1024]byte)[:]
+	}
+	return
+}
+
+// ----------------
+
+type sfiRvPooler struct {
+	pool  *sync.Pool
+	poolv interface{}
+}
+
+func (z *sfiRvPooler) end() {
+	if z.pool != nil {
+		z.pool.Put(z.poolv)
+		z.pool, z.poolv = nil, nil
+	}
+}
+
+func (z *sfiRvPooler) get(newlen int) (fkvs []sfiRv) {
+	if newlen < 0 { // bounds-check-elimination
+		// cannot happen // here for bounds-check-elimination
+	} else if newlen <= 8 {
+		z.pool, z.poolv = &pool.sfiRv8, pool.sfiRv8.Get() // pool.sfiRv8()
+		fkvs = z.poolv.(*[8]sfiRv)[:newlen]
+	} else if newlen <= 16 {
+		z.pool, z.poolv = &pool.sfiRv16, pool.sfiRv16.Get() // pool.sfiRv16()
+		fkvs = z.poolv.(*[16]sfiRv)[:newlen]
+	} else if newlen <= 32 {
+		z.pool, z.poolv = &pool.sfiRv32, pool.sfiRv32.Get() // pool.sfiRv32()
+		fkvs = z.poolv.(*[32]sfiRv)[:newlen]
+	} else if newlen <= 64 {
+		z.pool, z.poolv = &pool.sfiRv64, pool.sfiRv64.Get() // pool.sfiRv64()
+		fkvs = z.poolv.(*[64]sfiRv)[:newlen]
+	} else if newlen <= 128 {
+		z.pool, z.poolv = &pool.sfiRv128, pool.sfiRv128.Get() // pool.sfiRv128()
+		fkvs = z.poolv.(*[128]sfiRv)[:newlen]
+	} else {
+		fkvs = make([]sfiRv, newlen)
 	}
 	return
 }

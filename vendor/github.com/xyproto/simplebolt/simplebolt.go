@@ -10,17 +10,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/coreos/bbolt"
+	"github.com/etcd-io/bbolt"
 )
 
 const (
 	// Version number. Stable API within major version numbers.
-	Version = 3.2
+	Version = 3.4
 )
 
 type (
-	// A Bolt database
-	Database bolt.DB
+	// Database represents Bolt database
+	Database bbolt.DB
 
 	// Used for each of the datatypes
 	boltBucket struct {
@@ -28,28 +28,45 @@ type (
 		name []byte    // the bucket name
 	}
 
-	// The wrapped datatypes
-	List     boltBucket
-	Set      boltBucket
-	HashMap  boltBucket
+	// List is a Bolt bucket, with methods for acting like a list
+	List boltBucket
+
+	// Set is a Bolt bucket, with methods for acting like a set, only allowing unique keys
+	Set boltBucket
+
+	// HashMap is a Bolt bucket, with methods for acting like a hash map (with an ID and then key=>value)
+	HashMap boltBucket
+
+	// KeyValue is a Bolt bucket, with methods for acting like a key=>value store
 	KeyValue boltBucket
 )
 
 var (
+	// ErrBucketNotFound may be returned if a no Bolt bucket was found
 	ErrBucketNotFound = errors.New("Bucket not found")
-	ErrKeyNotFound    = errors.New("Key not found")
-	ErrDoesNotExist   = errors.New("Does not exist")
-	ErrFoundIt        = errors.New("Found it")
-	ErrExistsInSet    = errors.New("Element already exists in set")
-	ErrInvalidID      = errors.New("Element ID can not contain \":\"")
+
+	// ErrKeyNotFound will be returned if the key was not found in a HashMap or KeyValue struct
+	ErrKeyNotFound = errors.New("Key not found")
+
+	// ErrDoesNotExist will be returned if an element was not found. Used in List, Set, HashMap and KeyValue.
+	ErrDoesNotExist = errors.New("Does not exist")
+
+	// ErrExistsInSet is only returned if an element is added to a Set, but it already exists
+	ErrExistsInSet = errors.New("Element already exists in set")
+
+	// ErrInvalidID is only returned if adding an element to a HashMap that contains a colon (:)
+	ErrInvalidID = errors.New("Element ID can not contain \":\"")
+
+	// ErrFoundIt is only used internally, for breaking out of Bolt DB style for-loops
+	ErrFoundIt = errors.New("Found it")
 )
 
 /* --- Database functions --- */
 
-// Create a new bolt database
+// New creates a new Bolt database struct, using the given file or creating a new file, as needed
 func New(filename string) (*Database, error) {
 	// Use a timeout, in case the database file is already in use
-	db, err := bolt.Open(filename, 0600, &bolt.Options{Timeout: 1 * time.Second})
+	db, err := bbolt.Open(filename, 0600, &bbolt.Options{Timeout: 1 * time.Second})
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +75,7 @@ func New(filename string) (*Database, error) {
 
 // Close the database
 func (db *Database) Close() {
-	(*bolt.DB)(db).Close()
+	(*bbolt.DB)(db).Close()
 }
 
 // Ping the database (only for fulfilling the pinterface.IHost interface)
@@ -69,10 +86,10 @@ func (db *Database) Ping() error {
 
 /* --- List functions --- */
 
-// Create a new list
+// NewList loads or creates a new List struct, with the given ID
 func NewList(db *Database, id string) (*List, error) {
 	name := []byte(id)
-	if err := (*bolt.DB)(db).Update(func(tx *bolt.Tx) error {
+	if err := (*bbolt.DB)(db).Update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 			return errors.New("Could not create bucket: " + err.Error())
 		}
@@ -89,7 +106,7 @@ func (l *List) Add(value string) error {
 	if l.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(l.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(l.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(l.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -102,12 +119,12 @@ func (l *List) Add(value string) error {
 	})
 }
 
-// Get all elements of a list
+// All returns all elements in the list
 func (l *List) All() (results []string, err error) {
 	if l.name == nil {
 		return nil, ErrDoesNotExist
 	}
-	return results, (*bolt.DB)(l.db).View(func(tx *bolt.Tx) error {
+	return results, (*bbolt.DB)(l.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(l.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -119,7 +136,7 @@ func (l *List) All() (results []string, err error) {
 	})
 }
 
-// Deprecated
+// GetAll is deprecated, please use .All() instead
 func (l *List) GetAll() ([]string, error) {
 	return l.All()
 }
@@ -129,7 +146,7 @@ func (l *List) Last() (result string, err error) {
 	if l.name == nil {
 		return "", ErrDoesNotExist
 	}
-	return result, (*bolt.DB)(l.db).View(func(tx *bolt.Tx) error {
+	return result, (*bbolt.DB)(l.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(l.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -152,7 +169,7 @@ func (l *List) LastN(n int) (results []string, err error) {
 	if l.name == nil {
 		return nil, ErrDoesNotExist
 	}
-	return results, (*bolt.DB)(l.db).View(func(tx *bolt.Tx) error {
+	return results, (*bbolt.DB)(l.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(l.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -188,8 +205,8 @@ func (l *List) GetLastN(n int) ([]string, error) {
 
 // Remove this list
 func (l *List) Remove() error {
-	err := (*bolt.DB)(l.db).Update(func(tx *bolt.Tx) error {
-		return tx.DeleteBucket([]byte(l.name))
+	err := (*bbolt.DB)(l.db).Update(func(tx *bbolt.Tx) error {
+		return tx.DeleteBucket(l.name)
 	})
 	// Mark as removed by setting the name to nil
 	l.name = nil
@@ -201,7 +218,7 @@ func (l *List) Clear() error {
 	if l.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(l.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(l.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(l.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -214,10 +231,10 @@ func (l *List) Clear() error {
 
 /* --- Set functions --- */
 
-// Create a new key/value if it does not already exist
+// NewSet loads or creates a new Set struct, with the given ID
 func NewSet(db *Database, id string) (*Set, error) {
 	name := []byte(id)
-	if err := (*bolt.DB)(db).Update(func(tx *bolt.Tx) error {
+	if err := (*bbolt.DB)(db).Update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 			return errors.New("Could not create bucket: " + err.Error())
 		}
@@ -241,7 +258,7 @@ func (s *Set) Add(value string) error {
 	if exists {
 		return ErrExistsInSet
 	}
-	return (*bolt.DB)(s.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(s.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(s.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -259,7 +276,7 @@ func (s *Set) Has(value string) (exists bool, err error) {
 	if s.name == nil {
 		return false, ErrDoesNotExist
 	}
-	return exists, (*bolt.DB)(s.db).View(func(tx *bolt.Tx) error {
+	return exists, (*bbolt.DB)(s.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(s.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -275,12 +292,12 @@ func (s *Set) Has(value string) (exists bool, err error) {
 	})
 }
 
-// Get all values of the set
+// All returns all elements in the set
 func (s *Set) All() (values []string, err error) {
 	if s.name == nil {
 		return nil, ErrDoesNotExist
 	}
-	return values, (*bolt.DB)(s.db).View(func(tx *bolt.Tx) error {
+	return values, (*bbolt.DB)(s.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(s.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -292,7 +309,7 @@ func (s *Set) All() (values []string, err error) {
 	})
 }
 
-// Deprecated
+// GetAll is deprecated, please use .All() instead
 func (s *Set) GetAll() ([]string, error) {
 	return s.All()
 }
@@ -302,7 +319,7 @@ func (s *Set) Del(value string) error {
 	if s.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(s.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(s.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(s.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -321,8 +338,8 @@ func (s *Set) Del(value string) error {
 
 // Remove this set
 func (s *Set) Remove() error {
-	err := (*bolt.DB)(s.db).Update(func(tx *bolt.Tx) error {
-		return tx.DeleteBucket([]byte(s.name))
+	err := (*bbolt.DB)(s.db).Update(func(tx *bbolt.Tx) error {
+		return tx.DeleteBucket(s.name)
 	})
 	// Mark as removed by setting the name to nil
 	s.name = nil
@@ -334,7 +351,7 @@ func (s *Set) Clear() error {
 	if s.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(s.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(s.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(s.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -347,10 +364,10 @@ func (s *Set) Clear() error {
 
 /* --- HashMap functions --- */
 
-// Create a new HashMap
+// NewHashMap loads or creates a new HashMap struct, with the given ID
 func NewHashMap(db *Database, id string) (*HashMap, error) {
 	name := []byte(id)
-	if err := (*bolt.DB)(db).Update(func(tx *bolt.Tx) error {
+	if err := (*bbolt.DB)(db).Update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 			return errors.New("Could not create bucket: " + err.Error())
 		}
@@ -370,7 +387,7 @@ func (h *HashMap) Set(elementid, key, value string) (err error) {
 	if strings.Contains(elementid, ":") {
 		return ErrInvalidID
 	}
-	return (*bolt.DB)(h.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(h.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -380,12 +397,12 @@ func (h *HashMap) Set(elementid, key, value string) (err error) {
 	})
 }
 
-// Get all elementid's for all hash elements
+// All returns all ID's, for all hash elements
 func (h *HashMap) All() (results []string, err error) {
 	if h.name == nil {
 		return nil, ErrDoesNotExist
 	}
-	return results, (*bolt.DB)(h.db).View(func(tx *bolt.Tx) error {
+	return results, (*bbolt.DB)(h.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -408,7 +425,7 @@ func (h *HashMap) All() (results []string, err error) {
 	})
 }
 
-// Deprecated
+// GetAll is deprecated, please use .All() instead
 func (h *HashMap) GetAll() ([]string, error) {
 	return h.All()
 }
@@ -418,7 +435,7 @@ func (h *HashMap) Get(elementid, key string) (val string, err error) {
 	if h.name == nil {
 		return "", ErrDoesNotExist
 	}
-	err = (*bolt.DB)(h.db).View(func(tx *bolt.Tx) error {
+	err = (*bbolt.DB)(h.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -438,7 +455,7 @@ func (h *HashMap) Has(elementid, key string) (found bool, err error) {
 	if h.name == nil {
 		return false, ErrDoesNotExist
 	}
-	return found, (*bolt.DB)(h.db).View(func(tx *bolt.Tx) error {
+	return found, (*bbolt.DB)(h.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -454,8 +471,8 @@ func (h *HashMap) Has(elementid, key string) (found bool, err error) {
 // Keys returns all names of all keys of a given owner.
 func (h *HashMap) Keys(owner string) ([]string, error) {
 	var props []string
-	return props, (*bolt.DB)(h.db).View(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(h.name))
+	return props, (*bbolt.DB)(h.db).View(func(tx *bbolt.Tx) error {
+		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
 		}
@@ -477,7 +494,7 @@ func (h *HashMap) Exists(elementid string) (found bool, err error) {
 	if h.name == nil {
 		return false, ErrDoesNotExist
 	}
-	return found, (*bolt.DB)(h.db).View(func(tx *bolt.Tx) error {
+	return found, (*bbolt.DB)(h.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -502,7 +519,7 @@ func (h *HashMap) DelKey(elementid, key string) error {
 	if h.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(h.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(h.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -517,7 +534,7 @@ func (h *HashMap) Del(elementid string) error {
 		return ErrDoesNotExist
 	}
 	// Remove the keys starting with elementid + ":"
-	return (*bolt.DB)(h.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(h.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -537,8 +554,8 @@ func (h *HashMap) Del(elementid string) error {
 
 // Remove this hashmap
 func (h *HashMap) Remove() error {
-	err := (*bolt.DB)(h.db).Update(func(tx *bolt.Tx) error {
-		return tx.DeleteBucket([]byte(h.name))
+	err := (*bbolt.DB)(h.db).Update(func(tx *bbolt.Tx) error {
+		return tx.DeleteBucket(h.name)
 	})
 	// Mark as removed by setting the name to nil
 	h.name = nil
@@ -550,7 +567,7 @@ func (h *HashMap) Clear() error {
 	if h.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(h.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(h.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(h.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -563,10 +580,10 @@ func (h *HashMap) Clear() error {
 
 /* --- KeyValue functions --- */
 
-// Create a new key/value if it does not already exist
+// NewKeyValue loads or creates a new KeyValue struct, with the given ID
 func NewKeyValue(db *Database, id string) (*KeyValue, error) {
 	name := []byte(id)
-	if err := (*bolt.DB)(db).Update(func(tx *bolt.Tx) error {
+	if err := (*bbolt.DB)(db).Update(func(tx *bbolt.Tx) error {
 		if _, err := tx.CreateBucketIfNotExists(name); err != nil {
 			return errors.New("Could not create bucket: " + err.Error())
 		}
@@ -582,7 +599,7 @@ func (kv *KeyValue) Set(key, value string) error {
 	if kv.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(kv.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(kv.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(kv.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -597,7 +614,7 @@ func (kv *KeyValue) Get(key string) (val string, err error) {
 	if kv.name == nil {
 		return "", ErrDoesNotExist
 	}
-	err = (*bolt.DB)(kv.db).View(func(tx *bolt.Tx) error {
+	err = (*bbolt.DB)(kv.db).View(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(kv.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -617,7 +634,7 @@ func (kv *KeyValue) Del(key string) error {
 	if kv.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(kv.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(kv.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(kv.name)
 		if bucket == nil {
 			return ErrBucketNotFound
@@ -633,7 +650,7 @@ func (kv *KeyValue) Inc(key string) (val string, err error) {
 	if kv.name == nil {
 		kv.name = []byte(key)
 	}
-	return val, (*bolt.DB)(kv.db).Update(func(tx *bolt.Tx) error {
+	return val, (*bbolt.DB)(kv.db).Update(func(tx *bbolt.Tx) error {
 		// The numeric value
 		num := 0
 		// Get the string value
@@ -662,8 +679,8 @@ func (kv *KeyValue) Inc(key string) (val string, err error) {
 
 // Remove this key/value
 func (kv *KeyValue) Remove() error {
-	err := (*bolt.DB)(kv.db).Update(func(tx *bolt.Tx) error {
-		return tx.DeleteBucket([]byte(kv.name))
+	err := (*bbolt.DB)(kv.db).Update(func(tx *bbolt.Tx) error {
+		return tx.DeleteBucket(kv.name)
 	})
 	// Mark as removed by setting the name to nil
 	kv.name = nil
@@ -675,7 +692,7 @@ func (kv *KeyValue) Clear() error {
 	if kv.name == nil {
 		return ErrDoesNotExist
 	}
-	return (*bolt.DB)(kv.db).Update(func(tx *bolt.Tx) error {
+	return (*bbolt.DB)(kv.db).Update(func(tx *bbolt.Tx) error {
 		bucket := tx.Bucket(kv.name)
 		if bucket == nil {
 			return ErrBucketNotFound

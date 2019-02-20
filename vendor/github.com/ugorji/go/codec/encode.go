@@ -12,7 +12,6 @@ import (
 	"runtime"
 	"sort"
 	"strconv"
-	"sync"
 	"time"
 )
 
@@ -280,10 +279,18 @@ type bufioEncWriter struct {
 	buf []byte
 	w   io.Writer
 	n   int
+	sz  int // buf size
+
+	// Extensions can call Encode() within a current Encode() call.
+	// We need to know when the top level Encode() call returns,
+	// so we can decide whether to Release() or not.
+	calls uint16 // what depth in mustDecode are we in now.
+
+	_ [6]uint8 // padding
 
 	bytesBufPooler
 
-	_ [3]uint64 // padding
+	_ [1]uint64 // padding
 	// a int
 	// b   [4]byte
 	// err
@@ -292,16 +299,22 @@ type bufioEncWriter struct {
 func (z *bufioEncWriter) reset(w io.Writer, bufsize int) {
 	z.w = w
 	z.n = 0
+	z.calls = 0
 	if bufsize <= 0 {
 		bufsize = defEncByteBufSize
 	}
+	z.sz = bufsize
 	if cap(z.buf) >= bufsize {
 		z.buf = z.buf[:cap(z.buf)]
 	} else {
-		z.bytesBufPooler.end() // potentially return old one to pool
 		z.buf = z.bytesBufPooler.get(bufsize)
 		// z.buf = make([]byte, bufsize)
 	}
+}
+
+func (z *bufioEncWriter) release() {
+	z.buf = nil
+	z.bytesBufPooler.end()
 }
 
 //go:noinline - flush only called intermittently
@@ -532,9 +545,8 @@ func (e *Encoder) kSlice(f *codecFnInfo, rv reflect.Value) {
 	}
 
 	// if chan, consume chan into a slice, and work off that slice.
-	var rvcs reflect.Value
 	if f.seq == seqTypeChan {
-		rvcs = reflect.Zero(reflect.SliceOf(rtelem))
+		rvcs := reflect.Zero(reflect.SliceOf(rtelem))
 		timeout := e.h.ChanRecvTimeout
 		if timeout < 0 { // consume until close
 			for {
@@ -584,7 +596,7 @@ func (e *Encoder) kSlice(f *codecFnInfo, rv reflect.Value) {
 		// encoding type, because preEncodeValue may break it down to
 		// a concrete type and kInterface will bomb.
 		if rtelem.Kind() != reflect.Interface {
-			fn = e.cfer().get(rtelem, true, true)
+			fn = e.h.fn(rtelem, true, true)
 		}
 		for j := 0; j < l; j++ {
 			if elemsep {
@@ -611,18 +623,18 @@ func (e *Encoder) kSlice(f *codecFnInfo, rv reflect.Value) {
 
 func (e *Encoder) kStructNoOmitempty(f *codecFnInfo, rv reflect.Value) {
 	fti := f.ti
-	elemsep := e.esep
 	tisfi := fti.sfiSrc
 	toMap := !(fti.toArray || e.h.StructToArray)
 	if toMap {
 		tisfi = fti.sfiSort
 	}
+
 	ee := e.e
 
 	sfn := structFieldNode{v: rv, update: false}
 	if toMap {
 		ee.WriteMapStart(len(tisfi))
-		if elemsep {
+		if e.esep {
 			for _, si := range tisfi {
 				ee.WriteMapElemKey()
 				// ee.EncodeStringEnc(cUTF8, si.encName)
@@ -640,7 +652,7 @@ func (e *Encoder) kStructNoOmitempty(f *codecFnInfo, rv reflect.Value) {
 		ee.WriteMapEnd()
 	} else {
 		ee.WriteArrayStart(len(tisfi))
-		if elemsep {
+		if e.esep {
 			for _, si := range tisfi {
 				ee.WriteArrayElem()
 				e.encodeValue(sfn.field(si), nil, true)
@@ -732,30 +744,9 @@ func (e *Encoder) kStruct(f *codecFnInfo, rv reflect.Value) {
 	// The cost is that of locking sometimes, but sync.Pool is efficient
 	// enough to reduce thread contention.
 
-	var spool *sync.Pool
-	var poolv interface{}
-	var fkvs []sfiRv
 	// fmt.Printf(">>>>>>>>>>>>>> encode.kStruct: newlen: %d\n", newlen)
-	if newlen < 0 { // bounds-check-elimination
-		// cannot happen // here for bounds-check-elimination
-	} else if newlen <= 8 {
-		spool, poolv = pool.sfiRv8()
-		fkvs = poolv.(*[8]sfiRv)[:newlen]
-	} else if newlen <= 16 {
-		spool, poolv = pool.sfiRv16()
-		fkvs = poolv.(*[16]sfiRv)[:newlen]
-	} else if newlen <= 32 {
-		spool, poolv = pool.sfiRv32()
-		fkvs = poolv.(*[32]sfiRv)[:newlen]
-	} else if newlen <= 64 {
-		spool, poolv = pool.sfiRv64()
-		fkvs = poolv.(*[64]sfiRv)[:newlen]
-	} else if newlen <= 128 {
-		spool, poolv = pool.sfiRv128()
-		fkvs = poolv.(*[128]sfiRv)[:newlen]
-	} else {
-		fkvs = make([]sfiRv, newlen)
-	}
+	var spool sfiRvPooler
+	var fkvs = spool.get(newlen)
 
 	var kv sfiRv
 	recur := e.h.RecursiveEmptyCheck
@@ -774,7 +765,8 @@ func (e *Encoder) kStruct(f *codecFnInfo, rv reflect.Value) {
 			// if a reference or struct, set to nil (so you do not output too much)
 			if si.omitEmpty() && isEmptyValue(kv.r, e.h.TypeInfos, recur, recur) {
 				switch kv.r.Kind() {
-				case reflect.Struct, reflect.Interface, reflect.Ptr, reflect.Array, reflect.Map, reflect.Slice:
+				case reflect.Struct, reflect.Interface, reflect.Ptr,
+					reflect.Array, reflect.Map, reflect.Slice:
 					kv.r = reflect.Value{} //encode as nil
 				}
 			}
@@ -843,9 +835,7 @@ func (e *Encoder) kStruct(f *codecFnInfo, rv reflect.Value) {
 	// do not use defer. Instead, use explicit pool return at end of function.
 	// defer has a cost we are trying to avoid.
 	// If there is a panic and these slices are not returned, it is ok.
-	if spool != nil {
-		spool.Put(poolv)
-	}
+	spool.end()
 }
 
 func (e *Encoder) kMap(f *codecFnInfo, rv reflect.Value) {
@@ -857,7 +847,6 @@ func (e *Encoder) kMap(f *codecFnInfo, rv reflect.Value) {
 
 	l := rv.Len()
 	ee.WriteMapStart(l)
-	elemsep := e.esep
 	if l == 0 {
 		ee.WriteMapEnd()
 		return
@@ -881,7 +870,7 @@ func (e *Encoder) kMap(f *codecFnInfo, rv reflect.Value) {
 		rtval = rtval.Elem()
 	}
 	if rtval.Kind() != reflect.Interface {
-		valFn = e.cfer().get(rtval, true, true)
+		valFn = e.h.fn(rtval, true, true)
 	}
 	mks := rv.MapKeys()
 
@@ -898,13 +887,13 @@ func (e *Encoder) kMap(f *codecFnInfo, rv reflect.Value) {
 		}
 		if rtkey.Kind() != reflect.Interface {
 			// rtkeyid = rt2id(rtkey)
-			keyFn = e.cfer().get(rtkey, true, true)
+			keyFn = e.h.fn(rtkey, true, true)
 		}
 	}
 
 	// for j, lmks := 0, len(mks); j < lmks; j++ {
 	for j := range mks {
-		if elemsep {
+		if e.esep {
 			ee.WriteMapElemKey()
 		}
 		if keyTypeIsString {
@@ -912,7 +901,7 @@ func (e *Encoder) kMap(f *codecFnInfo, rv reflect.Value) {
 		} else {
 			e.encodeValue(mks[j], keyFn, true)
 		}
-		if elemsep {
+		if e.esep {
 			ee.WriteMapElemValue()
 		}
 		e.encodeValue(rv.MapIndex(mks[j]), valFn, true)
@@ -1095,8 +1084,8 @@ type encWriterSwitch struct {
 	bytes bool    // encoding to []byte
 	esep  bool    // whether it has elem separators
 	isas  bool    // whether e.as != nil
-	js    bool    // captured here, so that no need to piggy back on *codecFner for this
-	be    bool    // captured here, so that no need to piggy back on *codecFner for this
+	js    bool    // is json encoder?
+	be    bool    // is binary encoder?
 	_     [2]byte // padding
 	// _    [2]uint64 // padding
 	// _    uint64    // padding
@@ -1253,20 +1242,14 @@ type Encoder struct {
 
 	err error
 
-	h *BasicHandle
-
+	h  *BasicHandle
+	hh Handle
 	// ---- cpu cache line boundary? + 3
 	encWriterSwitch
 
 	ci set
-	codecFnPooler
 
-	// Extensions can call Encode() within a current Encode() call.
-	// We need to know when the top level Encode() call returns,
-	// so we can decide whether to Close() or not.
-	calls uint16 // what depth in mustEncode are we in now.
-
-	b [(3 * 8) - 2]byte // for encoding chan or (non-addressable) [N]byte
+	b [(5 * 8)]byte // for encoding chan or (non-addressable) [N]byte
 
 	// ---- writable fields during execution --- *try* to keep in sep cache line
 
@@ -1298,7 +1281,7 @@ func NewEncoderBytes(out *[]byte, h Handle) *Encoder {
 }
 
 func newEncoder(h Handle) *Encoder {
-	e := &Encoder{h: h.getBasicHandle(), err: errEncoderNotInitialized}
+	e := &Encoder{h: basicHandle(h), err: errEncoderNotInitialized}
 	e.bytes = true
 	if useFinalizers {
 		runtime.SetFinalizer(e, (*Encoder).finalize)
@@ -1322,7 +1305,6 @@ func (e *Encoder) resetCommon() {
 	_, e.js = e.hh.(*JsonHandle)
 	e.e.reset()
 	e.err = nil
-	e.calls = 0
 }
 
 // Reset resets the Encoder with a new output stream.
@@ -1369,10 +1351,7 @@ func (e *Encoder) ResetBytes(out *[]byte) {
 	if out == nil {
 		return
 	}
-	var in []byte
-	if out != nil {
-		in = *out
-	}
+	var in []byte = *out
 	if in == nil {
 		in = make([]byte, defEncByteBufSize)
 	}
@@ -1500,13 +1479,26 @@ func (e *Encoder) MustEncode(v interface{}) {
 }
 
 func (e *Encoder) mustEncode(v interface{}) {
-	e.calls++
+	if e.wf == nil {
+		e.encode(v)
+		e.e.atEndOfEncode()
+		e.w.end()
+		return
+	}
+
+	if e.wf.buf == nil {
+		e.wf.buf = e.wf.bytesBufPooler.get(e.wf.sz)
+	}
+	e.wf.calls++
+
 	e.encode(v)
 	e.e.atEndOfEncode()
 	e.w.end()
-	e.calls--
-	if !e.h.DoNotClose && e.calls == 0 {
-		e.Close()
+
+	e.wf.calls--
+
+	if !e.h.ExplicitRelease && e.wf.calls == 0 {
+		e.wf.release()
 	}
 }
 
@@ -1522,39 +1514,32 @@ func (e *Encoder) mustEncode(v interface{}) {
 
 //go:noinline -- as it is run by finalizer
 func (e *Encoder) finalize() {
-	xdebugf("finalizing Encoder")
-	e.Close()
+	// xdebugf("finalizing Encoder")
+	e.Release()
 }
 
-// Close releases shared (pooled) resources.
+// Release releases shared (pooled) resources.
 //
-// It is important to call Close() when done with an Encoder, so those resources
+// It is important to call Release() when done with an Encoder, so those resources
 // are released instantly for use by subsequently created Encoders.
-func (e *Encoder) Close() {
-	if useFinalizers && removeFinalizerOnClose {
-		runtime.SetFinalizer(e, nil)
-	}
+func (e *Encoder) Release() {
 	if e.wf != nil {
-		e.wf.buf = nil
-		e.wf.bytesBufPooler.end()
+		e.wf.release()
 	}
-	e.codecFnPooler.end()
 }
 
 func (e *Encoder) encode(iv interface{}) {
+	// a switch with only concrete types can be optimized.
+	// consequently, we deal with nil and interfaces outside the switch.
+
 	if iv == nil || definitelyNil(iv) {
 		e.e.EncodeNil()
 		return
 	}
-	if v, ok := iv.(Selfer); ok {
-		v.CodecEncodeSelf(e)
-		return
-	}
-
-	// a switch with only concrete types can be optimized.
-	// consequently, we deal with nil and interfaces outside.
 
 	switch v := iv.(type) {
+	// case nil:
+	// case Selfer:
 	case Raw:
 		e.rawBytes(v)
 	case reflect.Value:
@@ -1635,7 +1620,9 @@ func (e *Encoder) encode(iv interface{}) {
 		e.e.EncodeStringBytesRaw(*v)
 
 	default:
-		if !fastpathEncodeTypeSwitch(iv, e) {
+		if v, ok := iv.(Selfer); ok {
+			v.CodecEncodeSelf(e)
+		} else if !fastpathEncodeTypeSwitch(iv, e) {
 			// checkfastpath=true (not false), as underlying slice/map type may be fast-path
 			e.encodeValue(reflect.ValueOf(iv), nil, true)
 		}
@@ -1687,7 +1674,7 @@ TOP:
 	if fn == nil {
 		rt := rv.Type()
 		// always pass checkCodecSelfer=true, in case T or ****T is passed, where *T is a Selfer
-		fn = e.cfer().get(rt, checkFastpath, true)
+		fn = e.h.fn(rt, checkFastpath, true)
 	}
 	if fn.i.addrE {
 		if rvpValid {

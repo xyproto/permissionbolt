@@ -11,16 +11,16 @@ github.com/aymerick/raymond/parser
 github.com/aymerick/raymond/lexer
 # github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0
 github.com/codegangsta/inject
-# github.com/coreos/bbolt v1.3.0
-github.com/coreos/bbolt
 # github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385
 github.com/eknkc/amber
 github.com/eknkc/amber/parser
+# github.com/etcd-io/bbolt v1.3.2
+github.com/etcd-io/bbolt
 # github.com/fatih/structs v1.1.0
 github.com/fatih/structs
-# github.com/flosch/pongo2 v0.0.0-20180809100617-24195e6d38b0
+# github.com/flosch/pongo2 v0.0.0-20181225140029-79872a7b2769
 github.com/flosch/pongo2
-# github.com/gin-contrib/sse v0.0.0-20170109093832-22d885f9ecc7
+# github.com/gin-contrib/sse v0.0.0-20190125020943-a7658810eb74
 github.com/gin-contrib/sse
 # github.com/gin-gonic/gin v1.3.0
 github.com/gin-gonic/gin
@@ -33,17 +33,17 @@ github.com/go-martini/martini
 github.com/golang/protobuf/proto
 # github.com/iris-contrib/blackfriday v2.0.0+incompatible
 github.com/iris-contrib/blackfriday
-# github.com/iris-contrib/formBinder v0.0.0-20171010160137-ad9fb86c356f
+# github.com/iris-contrib/formBinder v0.0.0-20190104093907-fbd5963f41e1
 github.com/iris-contrib/formBinder
 # github.com/iris-contrib/go.uuid v2.0.0+incompatible
 github.com/iris-contrib/go.uuid
 # github.com/json-iterator/go v1.1.5
 github.com/json-iterator/go
-# github.com/juju/errors v0.0.0-20181118221551-089d3ea4e4d5
+# github.com/juju/errors v0.0.0-20190207033735-e65537c515d7
 github.com/juju/errors
 # github.com/kataras/golog v0.0.0-20180321173939-03be10146386
 github.com/kataras/golog
-# github.com/kataras/iris v11.1.0+incompatible
+# github.com/kataras/iris v11.1.1+incompatible
 github.com/kataras/iris
 github.com/kataras/iris/cache
 github.com/kataras/iris/context
@@ -68,7 +68,7 @@ github.com/kataras/iris/cache/ruleset
 github.com/kataras/iris/cache/uri
 github.com/kataras/iris/macro/interpreter/parser
 github.com/kataras/iris/macro/interpreter/token
-# github.com/kataras/pio v0.0.0-20180511174041-a9733b5b6b83
+# github.com/kataras/pio v0.0.0-20190103105442-ea782b38602d
 github.com/kataras/pio
 github.com/kataras/pio/terminal
 # github.com/klauspost/compress v1.4.1
@@ -78,7 +78,7 @@ github.com/klauspost/compress/flate
 github.com/klauspost/cpuid
 # github.com/mattn/go-isatty v0.0.4
 github.com/mattn/go-isatty
-# github.com/microcosm-cc/bluemonday v1.0.1
+# github.com/microcosm-cc/bluemonday v1.0.2
 github.com/microcosm-cc/bluemonday
 # github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
 github.com/modern-go/concurrent
@@ -86,17 +86,19 @@ github.com/modern-go/concurrent
 github.com/modern-go/reflect2
 # github.com/ryanuber/columnize v2.1.0+incompatible
 github.com/ryanuber/columnize
-# github.com/shurcooL/sanitized_anchor_name v0.0.0-20170918181015-86672fcb3f95
+# github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/ugorji/go/codec v0.0.0-20181127175209-856da096dbdf
+# github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
 github.com/ugorji/go/codec
 # github.com/urfave/negroni v1.0.0
 github.com/urfave/negroni
-# github.com/xyproto/cookie v0.0.0-20171003173729-8ce3defb0907
+# github.com/xyproto/cookie v0.0.0-20181220103240-f4de411f45ff
 github.com/xyproto/cookie
 # github.com/xyproto/pinterface v0.0.0-20181004125811-9710ef24b684
 github.com/xyproto/pinterface
-# github.com/xyproto/simplebolt v0.0.0-20181004172231-10e17ad97c5e
+# github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a
+github.com/xyproto/randomstring
+# github.com/xyproto/simplebolt v0.0.0-20190219145457-752add4550da
 github.com/xyproto/simplebolt
 # github.com/zenazn/goji v0.9.0
 github.com/zenazn/goji
@@ -106,16 +108,16 @@ github.com/zenazn/goji/web
 github.com/zenazn/goji/web/middleware
 github.com/zenazn/goji/graceful/listener
 github.com/zenazn/goji/web/mutil
-# golang.org/x/crypto v0.0.0-20181127143415-eb0de9b17e85
+# golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/net v0.0.0-20181023162649-9b4f9f5ad519
+# golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
 golang.org/x/net/publicsuffix
 golang.org/x/net/html
 golang.org/x/net/html/atom
-# golang.org/x/sys v0.0.0-20181003145944-af653ce8b74f
+# golang.org/x/sys v0.0.0-20190219203350-90b0e4468f99
 golang.org/x/sys/unix
 # gopkg.in/go-playground/validator.v8 v8.18.2
 gopkg.in/go-playground/validator.v8
