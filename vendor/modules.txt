@@ -14,22 +14,22 @@ github.com/codegangsta/inject
 # github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385
 github.com/eknkc/amber
 github.com/eknkc/amber/parser
-# github.com/etcd-io/bbolt v1.3.2
+# github.com/etcd-io/bbolt v1.3.3
 github.com/etcd-io/bbolt
 # github.com/fatih/structs v1.1.0
 github.com/fatih/structs
-# github.com/flosch/pongo2 v0.0.0-20181225140029-79872a7b2769
+# github.com/flosch/pongo2 v0.0.0-20190505152737-8914e1cf9164
 github.com/flosch/pongo2
-# github.com/gin-contrib/sse v0.0.0-20190125020943-a7658810eb74
+# github.com/gin-contrib/sse v0.1.0
 github.com/gin-contrib/sse
-# github.com/gin-gonic/gin v1.3.0
+# github.com/gin-gonic/gin v1.4.0
 github.com/gin-gonic/gin
 github.com/gin-gonic/gin/binding
-github.com/gin-gonic/gin/json
+github.com/gin-gonic/gin/internal/json
 github.com/gin-gonic/gin/render
 # github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 github.com/go-martini/martini
-# github.com/golang/protobuf v1.2.0
+# github.com/golang/protobuf v1.3.1
 github.com/golang/protobuf/proto
 # github.com/iris-contrib/blackfriday v2.0.0+incompatible
 github.com/iris-contrib/blackfriday
@@ -37,7 +37,7 @@ github.com/iris-contrib/blackfriday
 github.com/iris-contrib/formBinder
 # github.com/iris-contrib/go.uuid v2.0.0+incompatible
 github.com/iris-contrib/go.uuid
-# github.com/json-iterator/go v1.1.5
+# github.com/json-iterator/go v1.1.6
 github.com/json-iterator/go
 # github.com/juju/errors v0.0.0-20190207033735-e65537c515d7
 github.com/juju/errors
@@ -71,12 +71,12 @@ github.com/kataras/iris/macro/interpreter/token
 # github.com/kataras/pio v0.0.0-20190103105442-ea782b38602d
 github.com/kataras/pio
 github.com/kataras/pio/terminal
-# github.com/klauspost/compress v1.4.1
+# github.com/klauspost/compress v1.7.0
 github.com/klauspost/compress/gzip
 github.com/klauspost/compress/flate
-# github.com/klauspost/cpuid v1.2.0
+# github.com/klauspost/cpuid v1.2.1
 github.com/klauspost/cpuid
-# github.com/mattn/go-isatty v0.0.4
+# github.com/mattn/go-isatty v0.0.8
 github.com/mattn/go-isatty
 # github.com/microcosm-cc/bluemonday v1.0.2
 github.com/microcosm-cc/bluemonday
@@ -88,7 +88,7 @@ github.com/modern-go/reflect2
 github.com/ryanuber/columnize
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/ugorji/go/codec v0.0.0-20190204201341-e444a5086c43
+# github.com/ugorji/go/codec v1.1.5-pre
 github.com/ugorji/go/codec
 # github.com/urfave/negroni v1.0.0
 github.com/urfave/negroni
@@ -98,7 +98,7 @@ github.com/xyproto/cookie
 github.com/xyproto/pinterface
 # github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a
 github.com/xyproto/randomstring
-# github.com/xyproto/simplebolt v0.0.0-20190219145457-752add4550da
+# github.com/xyproto/simplebolt v0.0.0-20190613081550-5b2ecc9405cb
 github.com/xyproto/simplebolt
 # github.com/zenazn/goji v0.9.0
 github.com/zenazn/goji
@@ -108,17 +108,23 @@ github.com/zenazn/goji/web
 github.com/zenazn/goji/web/middleware
 github.com/zenazn/goji/graceful/listener
 github.com/zenazn/goji/web/mutil
-# golang.org/x/crypto v0.0.0-20190219172222-a4c6cb3142f2
+# golang.org/x/crypto v0.0.0-20190611184440-5c40567a22f8
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/acme
-# golang.org/x/net v0.0.0-20190213061140-3a22650c66bd
+# golang.org/x/net v0.0.0-20190611141213-3f473d35a33a
 golang.org/x/net/publicsuffix
 golang.org/x/net/html
+golang.org/x/net/idna
 golang.org/x/net/html/atom
-# golang.org/x/sys v0.0.0-20190219203350-90b0e4468f99
+# golang.org/x/sys v0.0.0-20190610200419-93c9922d18ae
 golang.org/x/sys/unix
+# golang.org/x/text v0.3.2
+golang.org/x/text/secure/bidirule
+golang.org/x/text/unicode/bidi
+golang.org/x/text/unicode/norm
+golang.org/x/text/transform
 # gopkg.in/go-playground/validator.v8 v8.18.2
 gopkg.in/go-playground/validator.v8
 # gopkg.in/yaml.v2 v2.2.2
