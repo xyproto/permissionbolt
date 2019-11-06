@@ -62,7 +62,7 @@ require (
 	github.com/yudai/golcs v0.0.0-20170316035057-ecda9a501e82 // indirect
 	github.com/yudai/pp v2.0.1+incompatible // indirect
 	github.com/zenazn/goji v0.9.0
-	golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59
+	golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
 	golang.org/x/sys v0.0.0-20191105231009-c1f44814a5cd // indirect
 	golang.org/x/text v0.3.2 // indirect

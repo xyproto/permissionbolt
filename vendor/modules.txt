@@ -110,7 +110,7 @@ github.com/zenazn/goji/graceful/listener
 github.com/zenazn/goji/web
 github.com/zenazn/goji/web/middleware
 github.com/zenazn/goji/web/mutil
-# golang.org/x/crypto v0.0.0-20191105034135-c7e5f84aec59
+# golang.org/x/crypto v0.0.0-20191106202628-ed6320f186d4
 golang.org/x/crypto/acme
 golang.org/x/crypto/acme/autocert
 golang.org/x/crypto/bcrypt
