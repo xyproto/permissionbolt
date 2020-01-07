@@ -31,7 +31,7 @@ github.com/xyproto/cookie
 github.com/xyproto/pinterface
 # github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a
 github.com/xyproto/randomstring
-# github.com/xyproto/simplebolt v0.0.0-20200107210047-f6368e3e736c
+# github.com/xyproto/simplebolt v0.0.0-20200107210149-4b22465eeb21
 github.com/xyproto/simplebolt
 # github.com/zenazn/goji v0.9.0
 github.com/zenazn/goji

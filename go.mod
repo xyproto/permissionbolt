@@ -17,7 +17,7 @@ require (
 	github.com/xyproto/cookie v0.0.0-20181220103240-f4de411f45ff
 	github.com/xyproto/pinterface v0.0.0-20181004125811-9710ef24b684
 	github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a // indirect
-	github.com/xyproto/simplebolt v0.0.0-20200107210047-f6368e3e736c
+	github.com/xyproto/simplebolt v0.0.0-20200107210149-4b22465eeb21
 	github.com/zenazn/goji v0.9.0
 	golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876
 	golang.org/x/net v0.0.0-20190813141303-74dc4d7220e7 // indirect
