@@ -20,7 +20,7 @@ Features and limitations
 
 ## Requirements
 
-* Go >= 1.11
+* Go >= 1.9
 
 Example for [Negroni](https://github.com/codegangsta/negroni)
 --------------------
