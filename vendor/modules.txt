@@ -31,7 +31,7 @@ github.com/xyproto/cookie
 github.com/xyproto/pinterface
 # github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a
 github.com/xyproto/randomstring
-# github.com/xyproto/simplebolt v0.0.0-20200101183335-07df57af8f04
+# github.com/xyproto/simplebolt v0.0.0-20200107210047-f6368e3e736c
 github.com/xyproto/simplebolt
 # github.com/zenazn/goji v0.9.0
 github.com/zenazn/goji
@@ -44,7 +44,7 @@ github.com/zenazn/goji/web/mutil
 # golang.org/x/crypto v0.0.0-20191227163750-53104e6ec876
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-# golang.org/x/sys v0.0.0-20191228213918-04cbcbbfeed8
+# golang.org/x/sys v0.0.0-20200107162124-548cf772de50
 golang.org/x/sys/unix
 # gopkg.in/go-playground/validator.v8 v8.18.2
 gopkg.in/go-playground/validator.v8
