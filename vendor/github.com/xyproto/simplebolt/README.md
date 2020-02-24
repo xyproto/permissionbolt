@@ -1,4 +1,4 @@
-# Simple Bolt [![Build Status](https://travis-ci.org/xyproto/simplebolt.svg?branch=master)](https://travis-ci.org/xyproto/simplebolt) [![GoDoc](https://godoc.org/github.com/xyproto/simplebolt?status.svg)](http://godoc.org/github.com/xyproto/simplebolt)
+# Simple Bolt [![Build Status](https://travis-ci.com/xyproto/simplebolt.svg?branch=master)](https://travis-ci.com/xyproto/simplebolt) [![GoDoc](https://godoc.org/github.com/xyproto/simplebolt?status.svg)](http://godoc.org/github.com/xyproto/simplebolt) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/simplebolt)](https://goreportcard.com/report/github.com/xyproto/simplebolt)
 
 Simple way to use the [Bolt](https://github.com/coreos/bbolt) database. Similar design to [simpleredis](https://github.com/xyproto/simpleredis).
 
