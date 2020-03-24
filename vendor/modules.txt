@@ -1,7 +1,5 @@
 # github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0
 github.com/codegangsta/inject
-# github.com/etcd-io/bbolt v1.3.3
-github.com/etcd-io/bbolt
 # github.com/gin-contrib/sse v0.1.0
 github.com/gin-contrib/sse
 # github.com/gin-gonic/gin v1.4.0
@@ -11,7 +9,7 @@ github.com/gin-gonic/gin/internal/json
 github.com/gin-gonic/gin/render
 # github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 github.com/go-martini/martini
-# github.com/golang/protobuf v1.3.2
+# github.com/golang/protobuf v1.3.5
 github.com/golang/protobuf/proto
 # github.com/json-iterator/go v1.1.7
 github.com/json-iterator/go
@@ -31,7 +29,7 @@ github.com/xyproto/cookie
 github.com/xyproto/pinterface
 # github.com/xyproto/randomstring v0.0.0-20181222003104-0f764aabc45a
 github.com/xyproto/randomstring
-# github.com/xyproto/simplebolt v0.0.0-20200107212535-0f525d8de662
+# github.com/xyproto/simplebolt v1.5.1
 github.com/xyproto/simplebolt
 # github.com/zenazn/goji v0.9.0
 github.com/zenazn/goji
@@ -41,10 +39,12 @@ github.com/zenazn/goji/graceful/listener
 github.com/zenazn/goji/web
 github.com/zenazn/goji/web/middleware
 github.com/zenazn/goji/web/mutil
-# golang.org/x/crypto v0.0.0-20200221231518-2aa609cf4a9d
+# go.etcd.io/bbolt v1.3.4
+go.etcd.io/bbolt
+# golang.org/x/crypto v0.0.0-20200323165209-0ec3e9974c59
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-# golang.org/x/sys v0.0.0-20200223170610-d5e6a3e2c0ae
+# golang.org/x/sys v0.0.0-20200323222414-85ca7c5b95cd
 golang.org/x/sys/unix
 # gopkg.in/go-playground/validator.v8 v8.18.2
 gopkg.in/go-playground/validator.v8
