@@ -1,4 +1,4 @@
-// Copyright 2014 Manu Martinez-Almeida.  All rights reserved.
+// Copyright 2014 Manu Martinez-Almeida. All rights reserved.
 // Use of this source code is governed by a MIT style
 // license that can be found in the LICENSE file.
 
@@ -22,17 +22,18 @@ const (
 	forceColor
 )
 
-var (
-	green            = string([]byte{27, 91, 57, 55, 59, 52, 50, 109})
-	white            = string([]byte{27, 91, 57, 48, 59, 52, 55, 109})
-	yellow           = string([]byte{27, 91, 57, 48, 59, 52, 51, 109})
-	red              = string([]byte{27, 91, 57, 55, 59, 52, 49, 109})
-	blue             = string([]byte{27, 91, 57, 55, 59, 52, 52, 109})
-	magenta          = string([]byte{27, 91, 57, 55, 59, 52, 53, 109})
-	cyan             = string([]byte{27, 91, 57, 55, 59, 52, 54, 109})
-	reset            = string([]byte{27, 91, 48, 109})
-	consoleColorMode = autoColor
+const (
+	green   = "\033[97;42m"
+	white   = "\033[90;47m"
+	yellow  = "\033[90;43m"
+	red     = "\033[97;41m"
+	blue    = "\033[97;44m"
+	magenta = "\033[97;45m"
+	cyan    = "\033[97;46m"
+	reset   = "\033[0m"
 )
+
+var consoleColorMode = autoColor
 
 // LoggerConfig defines the config for Logger middleware.
 type LoggerConfig struct {
@@ -43,7 +44,7 @@ type LoggerConfig struct {
 	// Optional. Default value is gin.DefaultWriter.
 	Output io.Writer
 
-	// SkipPaths is a url path array which logs are not written.
+	// SkipPaths is an url path array which logs are not written.
 	// Optional.
 	SkipPaths []string
 }
@@ -69,12 +70,12 @@ type LogFormatterParams struct {
 	Path string
 	// ErrorMessage is set if error has occurred in processing the request.
 	ErrorMessage string
-	// isTerm shows whether does gin's output descriptor refers to a terminal.
+	// isTerm shows whether gin's output descriptor refers to a terminal.
 	isTerm bool
 	// BodySize is the size of the Response Body
 	BodySize int
 	// Keys are the keys set on the request's context.
-	Keys map[string]interface{}
+	Keys map[string]any
 }
 
 // StatusCodeColor is the ANSI color for appropriately logging http status code to a terminal.
@@ -98,19 +99,19 @@ func (p *LogFormatterParams) MethodColor() string {
 	method := p.Method
 
 	switch method {
-	case "GET":
+	case http.MethodGet:
 		return blue
-	case "POST":
+	case http.MethodPost:
 		return cyan
-	case "PUT":
+	case http.MethodPut:
 		return yellow
-	case "DELETE":
+	case http.MethodDelete:
 		return red
-	case "PATCH":
+	case http.MethodPatch:
 		return green
-	case "HEAD":
+	case http.MethodHead:
 		return magenta
-	case "OPTIONS":
+	case http.MethodOptions:
 		return white
 	default:
 		return reset
@@ -137,10 +138,9 @@ var defaultLogFormatter = func(param LogFormatterParams) string {
 	}
 
 	if param.Latency > time.Minute {
-		// Truncate in a golang < 1.8 safe way
-		param.Latency = param.Latency - param.Latency%time.Second
+		param.Latency = param.Latency.Truncate(time.Second)
 	}
-	return fmt.Sprintf("[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s %s\n%s",
+	return fmt.Sprintf("[GIN] %v |%s %3d %s| %13v | %15s |%s %-7s %s %#v\n%s",
 		param.TimeStamp.Format("2006/01/02 - 15:04:05"),
 		statusColor, param.StatusCode, resetColor,
 		param.Latency,
@@ -161,12 +161,12 @@ func ForceConsoleColor() {
 	consoleColorMode = forceColor
 }
 
-// ErrorLogger returns a handlerfunc for any error type.
+// ErrorLogger returns a HandlerFunc for any error type.
 func ErrorLogger() HandlerFunc {
 	return ErrorLoggerT(ErrorTypeAny)
 }
 
-// ErrorLoggerT returns a handlerfunc for a given error type.
+// ErrorLoggerT returns a HandlerFunc for a given error type.
 func ErrorLoggerT(typ ErrorType) HandlerFunc {
 	return func(c *Context) {
 		c.Next()
@@ -178,7 +178,7 @@ func ErrorLoggerT(typ ErrorType) HandlerFunc {
 }
 
 // Logger instances a Logger middleware that will write the logs to gin.DefaultWriter.
-// By default gin.DefaultWriter = os.Stdout.
+// By default, gin.DefaultWriter = os.Stdout.
 func Logger() HandlerFunc {
 	return LoggerWithConfig(LoggerConfig{})
 }
