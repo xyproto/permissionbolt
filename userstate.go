@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/xyproto/cookie"     // Functions related to cookies
+	"github.com/xyproto/cookie/v2"  // Functions related to cookies
 	"github.com/xyproto/pinterface" // Database interfaces
 	"github.com/xyproto/simplebolt" // Bolt database wrapper
 )
