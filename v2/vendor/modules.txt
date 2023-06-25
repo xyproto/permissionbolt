@@ -1,31 +1,24 @@
-# github.com/codegangsta/inject v0.0.0-20150114235600-33e0aa1cb7c0
-github.com/codegangsta/inject
-# github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
-github.com/go-martini/martini
-# github.com/urfave/negroni v1.0.0
-github.com/urfave/negroni
 # github.com/xyproto/cookie/v2 v2.2.4
+## explicit; go 1.17
 github.com/xyproto/cookie/v2
 # github.com/xyproto/pinterface v1.5.3
+## explicit; go 1.8
 github.com/xyproto/pinterface
 # github.com/xyproto/randomstring v1.0.5
+## explicit; go 1.17
 github.com/xyproto/randomstring
 # github.com/xyproto/simplebolt v1.5.2
+## explicit; go 1.9
 github.com/xyproto/simplebolt
-# github.com/zenazn/goji v1.0.1
-github.com/zenazn/goji
-github.com/zenazn/goji/bind
-github.com/zenazn/goji/graceful
-github.com/zenazn/goji/graceful/listener
-github.com/zenazn/goji/web
-github.com/zenazn/goji/web/middleware
-github.com/zenazn/goji/web/mutil
 # go.etcd.io/bbolt v1.3.7
+## explicit; go 1.17
 go.etcd.io/bbolt
 # golang.org/x/crypto v0.10.0
+## explicit; go 1.17
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
 # golang.org/x/sys v0.9.0
+## explicit; go 1.17
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
 golang.org/x/sys/windows
