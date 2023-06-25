@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-martini/martini"
+	"github.com/go-martini/martini/v2"
 	"github.com/xyproto/permissionbolt"
 )
 

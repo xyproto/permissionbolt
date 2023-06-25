@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/xyproto/permissionbolt"
+	"github.com/xyproto/permissionbolt/v2"
 	"github.com/zenazn/goji"
 )
 

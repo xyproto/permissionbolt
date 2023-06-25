@@ -18,7 +18,7 @@ Features and limitations
 
 ## Requirements
 
-* Go 1.9 or later.
+* Go 1.17 or later.
 
 Example for [Negroni](https://github.com/codegangsta/negroni)
 --------------------
@@ -32,7 +32,7 @@ import (
     "strings"
 
     "github.com/codegangsta/negroni"
-    "github.com/xyproto/permissionbolt"
+    "github.com/xyproto/permissionbolt/v2"
 )
 
 func main() {
@@ -135,7 +135,7 @@ import (
     "strings"
 
     "github.com/go-martini/martini"
-    "github.com/xyproto/permissionbolt"
+    "github.com/xyproto/permissionbolt/v2"
 )
 
 func main() {
@@ -242,7 +242,7 @@ import (
     "strings"
 
     "github.com/gin-gonic/gin"
-    "github.com/xyproto/permissionbolt"
+    "github.com/xyproto/permissionbolt/v2"
 )
 
 func main() {
@@ -357,7 +357,7 @@ import (
     "net/http"
     "strings"
 
-    "github.com/xyproto/permissionbolt"
+    "github.com/xyproto/permissionbolt/v2"
     "github.com/zenazn/goji"
 )
 
@@ -470,7 +470,7 @@ import (
     "strings"
     "time"
 
-    "github.com/xyproto/permissionbolt"
+    "github.com/xyproto/permissionbolt/v2"
     "github.com/xyproto/pinterface"
 )
 
@@ -629,7 +629,7 @@ package main
 import (
     "fmt"
     "github.com/coreos/bbolt"
-    "github.com/xyproto/permissionbolt"
+    "github.com/xyproto/permissionbolt/v2"
     "os"
 )
 

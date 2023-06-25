@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/xyproto/permissionbolt"
+	"github.com/xyproto/permissionbolt/v2"
 	"github.com/xyproto/pinterface"
 )
 
