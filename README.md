@@ -18,7 +18,7 @@ Features and limitations
 
 ## Requirements
 
-* Go 1.17 or later.
+* Go 1.24 or later.
 
 Example for [Negroni](https://github.com/codegangsta/negroni)
 --------------------
@@ -658,6 +658,6 @@ func main() {
 General information
 -------------------
 
-* Version: 2.6.3
+* Version: 2.6.4
 * License: BSD-3
 * Alexander F. Rødseth &lt;xyproto@archlinux.org&gt;
