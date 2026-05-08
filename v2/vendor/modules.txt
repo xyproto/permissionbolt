@@ -1,14 +1,14 @@
 # github.com/xyproto/cookie/v2 v2.2.7
 ## explicit; go 1.17
 github.com/xyproto/cookie/v2
-# github.com/xyproto/pinterface v1.5.4
+# github.com/xyproto/pinterface/v2 v2.1.2
 ## explicit; go 1.8
-github.com/xyproto/pinterface
+github.com/xyproto/pinterface/v2
 # github.com/xyproto/randomstring v1.2.0
 ## explicit; go 1.17
 github.com/xyproto/randomstring
-# github.com/xyproto/simplebolt v1.5.3
-## explicit; go 1.24.0
+# github.com/xyproto/simplebolt v1.6.0
+## explicit; go 1.25.0
 github.com/xyproto/simplebolt
 # go.etcd.io/bbolt v1.4.3
 ## explicit; go 1.23
@@ -16,11 +16,11 @@ go.etcd.io/bbolt
 go.etcd.io/bbolt/errors
 go.etcd.io/bbolt/internal/common
 go.etcd.io/bbolt/internal/freelist
-# golang.org/x/crypto v0.45.0
-## explicit; go 1.24.0
+# golang.org/x/crypto v0.50.0
+## explicit; go 1.25.0
 golang.org/x/crypto/bcrypt
 golang.org/x/crypto/blowfish
-# golang.org/x/sys v0.38.0
-## explicit; go 1.24.0
+# golang.org/x/sys v0.44.0
+## explicit; go 1.25.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
