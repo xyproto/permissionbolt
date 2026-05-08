@@ -471,7 +471,7 @@ import (
     "time"
 
     "github.com/xyproto/permissionbolt/v2"
-    "github.com/xyproto/pinterface"
+    "github.com/xyproto/pinterface/v2"
 )
 
 type permissionHandler struct {
@@ -658,6 +658,6 @@ func main() {
 General information
 -------------------
 
-* Version: 2.6.5
+* Version: 2.7.0
 * License: BSD-3
 * Alexander F. Rødseth &lt;xyproto@archlinux.org&gt;

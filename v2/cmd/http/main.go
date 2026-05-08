@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/xyproto/permissionbolt/v2"
-	"github.com/xyproto/pinterface"
+	"github.com/xyproto/pinterface/v2"
 )
 
 type permissionHandler struct {
