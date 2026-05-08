@@ -6,8 +6,6 @@ github.com/stretchr/testify v1.10.0 h1:Xv5erBjTwe/5IxqUQTdXv5kgmIvbHo3QQyRwhJsOf
 github.com/stretchr/testify v1.10.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/xyproto/cookie/v2 v2.2.7 h1:0Cj72/1ftzP0E/ca52YrF6RNyhMyCvl7fjPcvwsr9fE=
 github.com/xyproto/cookie/v2 v2.2.7/go.mod h1:wW8OiGxgIP7knzx9qZYA1NkicfCYDo/T0QyxUZ5Sd3o=
-github.com/xyproto/pinterface v1.6.0 h1:9AACoo9KvEHMZ51Aem8nnvMabTkNnE3Ye26Fke5qW3M=
-github.com/xyproto/pinterface v1.6.0/go.mod h1:X5B5pKE49ak7SpyDh5QvJvLH9cC9XuZNDcl5hEyYc34=
 github.com/xyproto/pinterface/v2 v2.1.2 h1:PhCqZpwknL0w0o1FNv9XsCk54ArgK7fogwvvBzLKw9c=
 github.com/xyproto/pinterface/v2 v2.1.2/go.mod h1:JEnbIgxF7qfkASFr8EXLhd2ymhd6xLG0Eq5xkFHqyXw=
 github.com/xyproto/randomstring v1.2.0 h1:y7PXAEBM3XlwJjPG2JQg4voxBYZ4+hPgRdGKCfU8wik=

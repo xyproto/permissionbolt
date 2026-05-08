@@ -1,9 +1,6 @@
 # github.com/xyproto/cookie/v2 v2.2.7
 ## explicit; go 1.17
 github.com/xyproto/cookie/v2
-# github.com/xyproto/pinterface v1.6.0
-## explicit; go 1.8
-github.com/xyproto/pinterface
 # github.com/xyproto/pinterface/v2 v2.1.2
 ## explicit; go 1.8
 github.com/xyproto/pinterface/v2
