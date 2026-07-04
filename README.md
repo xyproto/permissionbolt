@@ -1,4 +1,5 @@
-# Permissionbolt [![GoDoc](https://godoc.org/github.com/xyproto/permissionbolt?status.svg)](http://godoc.org/github.com/xyproto/permissionbolt) [![Go Report Card](https://goreportcard.com/badge/github.com/xyproto/permissionbolt)](https://goreportcard.com/report/github.com/xyproto/permissionbolt)
+# Permissionbolt
+[![GoDoc](https://godoc.org/github.com/xyproto/permissionbolt?status.svg)](http://godoc.org/github.com/xyproto/permissionbolt)
 
 Middleware for keeping track of users, login states and permissions.
 
@@ -658,6 +659,6 @@ func main() {
 General information
 -------------------
 
-* Version: 2.7.0
+* Version: 2.7.1
 * License: BSD-3
 * Alexander F. Rødseth &lt;xyproto@archlinux.org&gt;
